@@ -15,8 +15,9 @@ struct AIUsageApp: App {
         } label: {
             HStack(spacing: 4) {
                 Image("ClaudeLogo")
-                    .resizable()
                     .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
                     .frame(width: 16, height: 16)
                     .foregroundStyle(viewModel.usageLevel.color)
                 Text(viewModel.menuBarText)
