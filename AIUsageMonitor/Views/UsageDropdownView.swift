@@ -1,4 +1,5 @@
 import SwiftUI
+import Charts
 import Shared
 
 struct UsageDropdownView: View {
@@ -7,16 +8,29 @@ struct UsageDropdownView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+
+            // MARK: Header
             HStack {
                 Text("Claude Usage")
                     .font(.headline)
                 Spacer()
-                if viewModel.isLoading {
-                    ProgressView()
-                        .scaleEffect(0.6)
+                Button {
+                    viewModel.fetchUsage()
+                } label: {
+                    if viewModel.isLoading {
+                        ProgressView()
+                            .scaleEffect(0.6)
+                            .frame(width: 16, height: 16)
+                    } else {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.caption)
+                    }
                 }
+                .buttonStyle(.plain)
+                .disabled(viewModel.isLoading)
             }
 
+            // MARK: Error
             if let errorMessage = viewModel.error {
                 Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
                     .foregroundColor(.red)
@@ -24,6 +38,7 @@ struct UsageDropdownView: View {
                     .lineLimit(2)
             }
 
+            // MARK: Usage rows
             if let usage = viewModel.usage {
                 UsageRowView(label: "5-hour", window: usage.fiveHour)
                 UsageRowView(label: "7-day", window: usage.sevenDay)
@@ -31,6 +46,62 @@ struct UsageDropdownView: View {
                 Text("Loading usage data…")
                     .foregroundColor(.secondary)
                     .font(.callout)
+            }
+
+            // MARK: Sparkline (5-hour trend)
+            if viewModel.history.count >= 2 {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("5-hour trend")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    Chart(viewModel.history) { snapshot in
+                        AreaMark(
+                            x: .value("Time", snapshot.timestamp),
+                            y: .value("Usage", snapshot.fiveHourUtilization)
+                        )
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [Color.accentColor.opacity(0.3), Color.accentColor.opacity(0.05)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        LineMark(
+                            x: .value("Time", snapshot.timestamp),
+                            y: .value("Usage", snapshot.fiveHourUtilization)
+                        )
+                        .foregroundStyle(Color.accentColor)
+                        .lineStyle(StrokeStyle(lineWidth: 1.5))
+                    }
+                    .chartXAxis(.hidden)
+                    .chartYAxis(.hidden)
+                    .chartYScale(domain: 0...100)
+                    .frame(height: 44)
+                }
+            }
+
+            // MARK: Token countdown (only if API returns counts)
+            if let usage = viewModel.usage,
+               let remaining = usage.fiveHour.tokensRemaining,
+               let limit = usage.fiveHour.tokensLimit {
+                HStack {
+                    Text("Tokens left:")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Text("\(remaining.formatted()) / \(limit.formatted())")
+                        .font(.caption.monospacedDigit())
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            // MARK: Last updated (live ticking)
+            if let lastUpdated = viewModel.lastUpdated {
+                TimelineView(.periodic(from: .now, by: 1)) { _ in
+                    Text(formattedLastUpdated(lastUpdated))
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
             }
 
             Divider()
@@ -71,6 +142,13 @@ struct UsageDropdownView: View {
         .padding()
         .frame(width: 270)
     }
+
+    private func formattedLastUpdated(_ date: Date) -> String {
+        let elapsed = Date().timeIntervalSince(date)
+        if elapsed < 60  { return "Updated \(Int(elapsed))s ago" }
+        if elapsed < 300 { return "Updated \(Int(elapsed / 60))m ago" }
+        return "Updated >5m ago"
+    }
 }
 
 // MARK: - Hover-aware button style
@@ -100,6 +178,8 @@ struct UsageRowView: View {
     let label: String
     let window: UsageWindow
 
+    @State private var animatedUtilization: Double = 0
+
     private var level: UsageLevel { UsageLevel.from(utilization: window.utilization) }
 
     var body: some View {
@@ -109,7 +189,7 @@ struct UsageRowView: View {
                     .font(.subheadline)
                     .frame(width: 52, alignment: .leading)
 
-                ProgressView(value: min(window.utilization / 100.0, 1.0))
+                ProgressView(value: min(animatedUtilization / 100.0, 1.0))
                     .tint(level.color)
 
                 Text("\(Int(window.utilization.rounded()))%")
@@ -122,6 +202,16 @@ struct UsageRowView: View {
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .padding(.leading, 60)
+        }
+        .onAppear {
+            withAnimation(.easeInOut(duration: 0.6)) {
+                animatedUtilization = window.utilization
+            }
+        }
+        .onChange(of: window.utilization) { newValue in
+            withAnimation(.easeInOut(duration: 0.4)) {
+                animatedUtilization = newValue
+            }
         }
     }
 }

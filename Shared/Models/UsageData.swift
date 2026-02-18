@@ -56,6 +56,10 @@ public struct UsageSnapshot: Codable, Equatable, Sendable {
     }
 }
 
+extension UsageSnapshot: Identifiable {
+    public var id: Date { timestamp }
+}
+
 public struct UsageResponse: Codable, Equatable, Sendable {
     public let fiveHour: UsageWindow
     public let sevenDay: UsageWindow
