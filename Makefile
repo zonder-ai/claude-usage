@@ -15,8 +15,10 @@ build:
 		build
 
 install: build
+	$(eval BUILT_APP := $(shell find $(HOME)/Library/Developer/Xcode/DerivedData/AIUsageMonitor-*/Build/Products/Release -name "$(APP_NAME)" -maxdepth 1 2>/dev/null | head -1))
 	pkill -f $(SCHEME) 2>/dev/null; sleep 1; true
-	cp -Rf "$(BUILD_DIR)/$(APP_NAME)" "/Applications/$(APP_NAME)"
+	rm -rf "/Applications/$(APP_NAME)"
+	cp -R "$(BUILT_APP)" "/Applications/$(APP_NAME)"
 	xattr -dr com.apple.quarantine "/Applications/$(APP_NAME)"
 	open "/Applications/$(APP_NAME)"
 	@echo "✓ Installed and launched /Applications/$(APP_NAME)"
