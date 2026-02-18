@@ -21,7 +21,6 @@ struct AIUsageApp: App {
                     img.size = NSSize(width: 16, height: 16)
                     return img
                 }())
-                .foregroundStyle(viewModel.usageLevel.color)
 
                 switch menuBarStyle {
                 case .percentage:
@@ -85,14 +84,12 @@ private struct BarProgressView: View {
     let color: Color
 
     var body: some View {
-        GeometryReader { geo in
-            ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color.secondary.opacity(0.3))
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(color)
-                    .frame(width: geo.size.width * min(utilization / 100.0, 1.0))
-            }
+        ZStack(alignment: .leading) {
+            RoundedRectangle(cornerRadius: 2)
+                .fill(Color.secondary.opacity(0.3))
+            RoundedRectangle(cornerRadius: 2)
+                .fill(color)
+                .frame(width: 50 * min(utilization / 100.0, 1.0))
         }
         .frame(width: 50, height: 6)
     }
