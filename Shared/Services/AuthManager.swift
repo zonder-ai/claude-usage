@@ -59,6 +59,8 @@ public final class AuthManager: ObservableObject {
     private static let claudeCodeKeychainService = "Claude Code-credentials"
     private static let appKeychainService = "com.aiusagemonitor.oauth"
 
+    private var oauthSession: ASWebAuthenticationSession?
+
     private static let dateFormatter: ISO8601DateFormatter = {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime]
@@ -86,7 +88,7 @@ public final class AuthManager: ObservableObject {
         guard let creds = try? JSONDecoder().decode(ClaudeCodeCredentials.self, from: data) else { return nil }
 
         let oauth = creds.claudeAiOauth
-        let expiresAt = Self.dateFormatter.date(from: oauth.expiresAt) ?? Date.distantFuture
+        guard let expiresAt = Self.dateFormatter.date(from: oauth.expiresAt) else { return nil }
 
         return .authenticated(
             accessToken: oauth.accessToken,
@@ -129,13 +131,16 @@ public final class AuthManager: ObservableObject {
 
         deleteKeychainItem(service: Self.appKeychainService)
 
-        let query: [String: Any] = [
+        let addQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: Self.appKeychainService,
             kSecValueData as String: data
         ]
-        SecItemAdd(query as CFDictionary, nil)
-
+        let status = SecItemAdd(addQuery as CFDictionary, nil)
+        guard status == errSecSuccess else {
+            state = .error("Keychain write failed (\(status))")
+            return
+        }
         state = .authenticated(accessToken: accessToken, refreshToken: refreshToken, expiresAt: expiresAt)
     }
 
@@ -148,6 +153,8 @@ public final class AuthManager: ObservableObject {
             url: authURL,
             callbackURLScheme: "aiusagemonitor"
         ) { [weak self] callbackURL, error in
+            // clear the retained session after callback
+            Task { @MainActor [weak self] in self?.oauthSession = nil }
             guard let self else { return }
             if let error {
                 Task { @MainActor in self.state = .error(error.localizedDescription) }
@@ -168,7 +175,8 @@ public final class AuthManager: ObservableObject {
                 )
             }
         }
-        session.prefersEphemeralWebBrowserSession = false
+        session.prefersEphemeralWebBrowserSession = true
+        oauthSession = session
         session.start()
     }
 
