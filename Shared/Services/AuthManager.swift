@@ -177,7 +177,7 @@ public final class AuthManager: NSObject, ObservableObject {
             }
         }
         session.presentationContextProvider = self
-        session.prefersEphemeralWebBrowserSession = true
+        session.prefersEphemeralWebBrowserSession = false
         oauthSession = session
         session.start()
     }

@@ -15,6 +15,7 @@ struct AIUsageApp: App {
                 Text(viewModel.menuBarText)
                     .monospacedDigit()
             }
+            .task { viewModel.startPolling() }
         }
         .menuBarExtraStyle(.window)
 
