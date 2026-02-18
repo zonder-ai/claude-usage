@@ -9,7 +9,7 @@ final class AuthManagerTests: XCTestCase {
             "claudeAiOauth": {
                 "accessToken": "test-token-123",
                 "refreshToken": "refresh-456",
-                "expiresAt": "2026-12-31T23:59:59Z",
+                "expiresAt": 1771468048147,
                 "scopes": ["user:read"],
                 "subscriptionType": "pro"
             }

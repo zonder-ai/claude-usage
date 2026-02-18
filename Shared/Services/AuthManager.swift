@@ -13,7 +13,7 @@ public struct ClaudeCodeCredentials: Codable {
 public struct OAuthCredential: Codable {
     public let accessToken: String
     public let refreshToken: String
-    public let expiresAt: String
+    public let expiresAt: Double   // Unix timestamp in milliseconds
     public let scopes: [String]
     public let subscriptionType: String
 }
@@ -62,12 +62,6 @@ public final class AuthManager: NSObject, ObservableObject {
 
     private var oauthSession: ASWebAuthenticationSession?
 
-    private static let dateFormatter: ISO8601DateFormatter = {
-        let f = ISO8601DateFormatter()
-        f.formatOptions = [.withInternetDateTime]
-        return f
-    }()
-
     public override init() { super.init() }
 
     /// Try Claude Code's Keychain first, then the app's own stored token.
@@ -89,7 +83,7 @@ public final class AuthManager: NSObject, ObservableObject {
         guard let creds = try? JSONDecoder().decode(ClaudeCodeCredentials.self, from: data) else { return nil }
 
         let oauth = creds.claudeAiOauth
-        guard let expiresAt = Self.dateFormatter.date(from: oauth.expiresAt) else { return nil }
+        let expiresAt = Date(timeIntervalSince1970: oauth.expiresAt / 1000)
 
         return .authenticated(
             accessToken: oauth.accessToken,
