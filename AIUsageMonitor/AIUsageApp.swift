@@ -13,7 +13,7 @@ struct AIUsageApp: App {
                     viewModel.authManager.handleOAuthCallback(url: url)
                 }
         } label: {
-            HStack(spacing: 4) {
+            HStack(spacing: 0) {
                 Image(nsImage: {
                     let img = NSImage(named: "ClaudeLogo") ?? NSImage()
                     img.isTemplate = true
@@ -23,6 +23,7 @@ struct AIUsageApp: App {
                 .foregroundStyle(viewModel.usageLevel.color)
                 Text(viewModel.menuBarText)
                     .monospacedDigit()
+                    .padding(.leading, 6)
             }
             .task {
                 viewModel.startPolling()
