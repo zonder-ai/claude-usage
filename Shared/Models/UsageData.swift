@@ -97,3 +97,18 @@ extension JSONDecoder {
         return decoder
     }()
 }
+
+extension JSONEncoder {
+    /// Encodes `Date` as ISO 8601 with fractional seconds — symmetric with `JSONDecoder.apiDecoder`.
+    public static let apiEncoder: JSONEncoder = {
+        let fractionalFormatter = ISO8601DateFormatter()
+        fractionalFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .custom { date, encoder in
+            var container = encoder.singleValueContainer()
+            try container.encode(fractionalFormatter.string(from: date))
+        }
+        return encoder
+    }()
+}

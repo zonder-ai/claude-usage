@@ -26,13 +26,17 @@ final class UsageStoreTests: XCTestCase {
     }
 
     func testLoadReturnsNilWhenEmpty() {
-        let defaults = UserDefaults(suiteName: "test.empty.\(UUID().uuidString)")!
+        let suiteName = "test.empty.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        addTeardownBlock { defaults.removeSuite(named: suiteName) }
         let store = UsageStore(defaults: defaults)
         XCTAssertNil(store.load())
     }
 
     func testSaveOverwritesPreviousValue() {
-        let defaults = UserDefaults(suiteName: "test.overwrite.\(UUID().uuidString)")!
+        let suiteName = "test.overwrite.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        addTeardownBlock { defaults.removeSuite(named: suiteName) }
         let store = UsageStore(defaults: defaults)
 
         let first = UsageResponse(

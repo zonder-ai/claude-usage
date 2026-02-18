@@ -20,9 +20,7 @@ public final class UsageStore: Sendable {
     }
 
     public func save(_ usage: UsageResponse) {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        guard let data = try? encoder.encode(usage) else { return }
+        guard let data = try? JSONEncoder.apiEncoder.encode(usage) else { return }
         defaults.set(data, forKey: Self.key)
     }
 
