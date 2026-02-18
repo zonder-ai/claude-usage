@@ -1,5 +1,6 @@
-import SwiftUI
+import ServiceManagement
 import Shared
+import SwiftUI
 
 @main
 struct AIUsageApp: App {
@@ -18,7 +19,12 @@ struct AIUsageApp: App {
                 Text(viewModel.menuBarText)
                     .monospacedDigit()
             }
-            .task { viewModel.startPolling() }
+            .task {
+                viewModel.startPolling()
+                if SMAppService.mainApp.status == .notRegistered {
+                    try? SMAppService.mainApp.register()
+                }
+            }
         }
         .menuBarExtraStyle(.window)
 
