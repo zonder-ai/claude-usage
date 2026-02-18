@@ -67,6 +67,7 @@ public final class AuthManager: NSObject, ObservableObject {
     private static let redirectURI = "aiusagemonitor://oauth/callback"
 
     private var pendingCodeVerifier: String?
+    private var pendingState: String?
 
     public override init() { super.init() }
 
@@ -109,7 +110,9 @@ public final class AuthManager: NSObject, ObservableObject {
     public func startOAuthFlow() {
         let verifier   = makeCodeVerifier()
         let challenge  = codeChallenge(for: verifier)
+        let state      = makeCodeVerifier() // random opaque value
         pendingCodeVerifier = verifier
+        pendingState = state
 
         var components = URLComponents(url: Self.authURL, resolvingAgainstBaseURL: false)!
         components.queryItems = [
@@ -120,6 +123,7 @@ public final class AuthManager: NSObject, ObservableObject {
             URLQueryItem(name: "code_challenge",        value: challenge),
             URLQueryItem(name: "code_challenge_method", value: "S256"),
             URLQueryItem(name: "scope",                 value: "user:inference user:profile"),
+            URLQueryItem(name: "state",                 value: state),
         ]
         guard let url = components.url else { return }
         NSWorkspace.shared.open(url)
@@ -128,14 +132,17 @@ public final class AuthManager: NSObject, ObservableObject {
     /// Call this when the app receives `aiusagemonitor://oauth/callback?code=…`.
     public func handleOAuthCallback(url: URL) {
         guard
-            let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-            let code       = components.queryItems?.first(where: { $0.name == "code" })?.value,
-            let verifier   = pendingCodeVerifier
+            let components    = URLComponents(url: url, resolvingAgainstBaseURL: false),
+            let code          = components.queryItems?.first(where: { $0.name == "code" })?.value,
+            let returnedState = components.queryItems?.first(where: { $0.name == "state" })?.value,
+            returnedState     == pendingState,
+            let verifier      = pendingCodeVerifier
         else {
             state = .error("Invalid OAuth callback")
             return
         }
         pendingCodeVerifier = nil
+        pendingState = nil
         Task { await exchangeCode(code: code, codeVerifier: verifier) }
     }
 
