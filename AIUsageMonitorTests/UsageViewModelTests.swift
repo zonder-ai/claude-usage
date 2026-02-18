@@ -77,7 +77,7 @@ final class UsageViewModelTests: XCTestCase {
     // MARK: - New Task 3 tests
 
     func testLastUpdatedNilOnInit() {
-        let vm = UsageViewModel(apiClient: ClaudeAPIClient(), authManager: AuthManager())
+        let vm = makeIsolatedVM()
         XCTAssertNil(vm.lastUpdated)
     }
 
