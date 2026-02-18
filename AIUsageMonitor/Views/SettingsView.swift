@@ -1,15 +1,32 @@
-import SwiftUI
+import ServiceManagement
 import Shared
+import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject var viewModel: UsageViewModel
     @State private var newThreshold = ""
+    @State private var launchAtLogin = (SMAppService.mainApp.status == .enabled)
     @FocusState private var thresholdFieldFocused: Bool
 
     var body: some View {
         Form {
             Section("Authentication") {
                 authSection
+            }
+
+            Section("General") {
+                Toggle("Launch at Login", isOn: $launchAtLogin)
+                    .onChange(of: launchAtLogin) { enabled in
+                        do {
+                            if enabled {
+                                try SMAppService.mainApp.register()
+                            } else {
+                                try SMAppService.mainApp.unregister()
+                            }
+                        } catch {
+                            launchAtLogin = !enabled // revert on failure
+                        }
+                    }
             }
 
             Section("Notifications") {
