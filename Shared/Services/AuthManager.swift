@@ -1,5 +1,6 @@
-import Foundation
+import AppKit
 import AuthenticationServices
+import Foundation
 
 // MARK: - Credential Models
 
@@ -53,7 +54,7 @@ public enum AuthState: Equatable, Sendable {
 // MARK: - Auth Manager
 
 @MainActor
-public final class AuthManager: ObservableObject {
+public final class AuthManager: NSObject, ObservableObject {
     @Published public var state: AuthState = .notAuthenticated
 
     private static let claudeCodeKeychainService = "Claude Code-credentials"
@@ -67,7 +68,7 @@ public final class AuthManager: ObservableObject {
         return f
     }()
 
-    public init() {}
+    public override init() { super.init() }
 
     /// Try Claude Code's Keychain first, then the app's own stored token.
     public func loadToken() {
@@ -175,6 +176,7 @@ public final class AuthManager: ObservableObject {
                 )
             }
         }
+        session.presentationContextProvider = self
         session.prefersEphemeralWebBrowserSession = true
         oauthSession = session
         session.start()
@@ -192,6 +194,16 @@ public final class AuthManager: ObservableObject {
             kSecAttrService as String: service
         ]
         SecItemDelete(query as CFDictionary)
+    }
+}
+
+// MARK: - ASWebAuthenticationPresentationContextProviding
+
+extension AuthManager: ASWebAuthenticationPresentationContextProviding {
+    public func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+        NSApp.windows.first(where: { $0.isKeyWindow })
+            ?? NSApp.windows.first
+            ?? ASPresentationAnchor()
     }
 }
 
