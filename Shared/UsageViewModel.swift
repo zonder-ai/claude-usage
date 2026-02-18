@@ -9,7 +9,7 @@ public final class UsageViewModel: ObservableObject {
     @Published public var notificationThresholds: [Int] = [75, 90, 100]
 
     private let apiClient: ClaudeAPIClient
-    let authManager: AuthManager   // internal so tests can inspect; views use via binding
+    public let authManager: AuthManager
     private let store: UsageStore
     private let pollInterval: TimeInterval
     private var timer: Timer?

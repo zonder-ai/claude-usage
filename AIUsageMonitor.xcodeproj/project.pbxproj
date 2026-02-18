@@ -8,14 +8,24 @@
 
 /* Begin PBXBuildFile section */
 		0AD527C330783B3283891A7B /* AIUsageApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C1D675E274CD8E624400031 /* AIUsageApp.swift */; };
+		0F5FDFB2DA2D1B2FBB77262B /* UsageViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7255D37839B6718A02074F7E /* UsageViewModelTests.swift */; };
 		0FBA31C29CF8578048E444AC /* Shared.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = A79B6070B55841F5C3CE20C5 /* Shared.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		1453008A06B2122DD1A57CE3 /* UsageData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A16D5AC3A9AFECF99D0F40D /* UsageData.swift */; };
+		3066F7A0B68C20EB63559357 /* UsageStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4F503F20863225F5D9E8F77 /* UsageStore.swift */; };
+		503A1A90BDDDC4713E56E5EA /* UsageViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E082EA11D1341A7CCE2107D0 /* UsageViewModel.swift */; };
 		6B64A3B8764E06975FF71E27 /* Shared.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EABB953E5F8CC5CEA4E75DB /* Shared.swift */; };
 		6B951CFF3358F48A3EF64DB6 /* Shared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A79B6070B55841F5C3CE20C5 /* Shared.framework */; };
 		83E0F4DD0F0ADE7DCD594620 /* Shared.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = A79B6070B55841F5C3CE20C5 /* Shared.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		8D735C2E787F4AA8805902EA /* Shared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A79B6070B55841F5C3CE20C5 /* Shared.framework */; };
+		8F27860F15F7CAC13D66D50A /* AuthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AC17EC375044E49FCA0B58C /* AuthManager.swift */; };
 		8F80E91319399293AB860FDA /* AIUsageMonitorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59776D22C8DEC46B3B41F31D /* AIUsageMonitorTests.swift */; };
 		9394578C23036F2C2F74AD56 /* UsageDataTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3AF9485AFE1BDA9002D261A /* UsageDataTests.swift */; };
+		A361AED1AEE13334CC5F4B53 /* ClaudeAPIClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 954856F70552CA6794541FA9 /* ClaudeAPIClientTests.swift */; };
+		BDC208057C75CC0A9F4903BC /* AuthManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AB3D4304A19499B38FCB74D /* AuthManagerTests.swift */; };
+		DDC3803F0335F14960F6EC38 /* ClaudeAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91F0391EB2C1196893557B52 /* ClaudeAPIClient.swift */; };
+		E0593F7B10A2248B8DCAF04C /* UsageStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDE2EEC076C4F430D68F1376 /* UsageStoreTests.swift */; };
+		F1A2B3C4D5E6F7A8B9C0D1E2 /* UsageDropdownView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D0E1F2 /* UsageDropdownView.swift */; };
+		F2A3B4C5D6E7F8A9B0C1D2E3 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B3C4D5E6F7A8B9C0D1E2F3 /* SettingsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -70,15 +80,25 @@
 /* Begin PBXFileReference section */
 		091E299D6265E072ABE97B0F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		20DFADA42D405A0E83B7CA91 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		2AC17EC375044E49FCA0B58C /* AuthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManager.swift; sourceTree = "<group>"; };
 		5434330A4BC9A4FC2824F573 /* AIUsageMonitorTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AIUsageMonitorTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		59776D22C8DEC46B3B41F31D /* AIUsageMonitorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIUsageMonitorTests.swift; sourceTree = "<group>"; };
 		5EABB953E5F8CC5CEA4E75DB /* Shared.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shared.swift; sourceTree = "<group>"; };
+		6AB3D4304A19499B38FCB74D /* AuthManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthManagerTests.swift; sourceTree = "<group>"; };
 		6C1D675E274CD8E624400031 /* AIUsageApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIUsageApp.swift; sourceTree = "<group>"; };
+		7255D37839B6718A02074F7E /* UsageViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageViewModelTests.swift; sourceTree = "<group>"; };
 		7CB788D7931984721AB02E77 /* AIUsageMonitor.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AIUsageMonitor.entitlements; sourceTree = "<group>"; };
 		8A16D5AC3A9AFECF99D0F40D /* UsageData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageData.swift; sourceTree = "<group>"; };
+		91F0391EB2C1196893557B52 /* ClaudeAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeAPIClient.swift; sourceTree = "<group>"; };
+		954856F70552CA6794541FA9 /* ClaudeAPIClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClaudeAPIClientTests.swift; sourceTree = "<group>"; };
 		A3AF9485AFE1BDA9002D261A /* UsageDataTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageDataTests.swift; sourceTree = "<group>"; };
 		A79B6070B55841F5C3CE20C5 /* Shared.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Shared.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		BDE2EEC076C4F430D68F1376 /* UsageStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageStoreTests.swift; sourceTree = "<group>"; };
+		E082EA11D1341A7CCE2107D0 /* UsageViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageViewModel.swift; sourceTree = "<group>"; };
 		E2235E34EF0E37B7F0A06BB7 /* AIUsageMonitor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AIUsageMonitor.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E4F503F20863225F5D9E8F77 /* UsageStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageStore.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F6A7B8C9D0E1F2 /* UsageDropdownView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageDropdownView.swift; sourceTree = "<group>"; };
+		A2B3C4D5E6F7A8B9C0D1E2F3 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -119,6 +139,9 @@
 		18E9429B7419DCAC1FDC0958 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				2AC17EC375044E49FCA0B58C /* AuthManager.swift */,
+				91F0391EB2C1196893557B52 /* ClaudeAPIClient.swift */,
+				E4F503F20863225F5D9E8F77 /* UsageStore.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -128,6 +151,7 @@
 			children = (
 				091E299D6265E072ABE97B0F /* Info.plist */,
 				5EABB953E5F8CC5CEA4E75DB /* Shared.swift */,
+				E082EA11D1341A7CCE2107D0 /* UsageViewModel.swift */,
 				06B2FEB6FE0BF16146195617 /* Models */,
 				18E9429B7419DCAC1FDC0958 /* Services */,
 			);
@@ -137,6 +161,8 @@
 		439C5EE7C3EDFC23F06DC34D /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				A1B2C3D4E5F6A7B8C9D0E1F2 /* UsageDropdownView.swift */,
+				A2B3C4D5E6F7A8B9C0D1E2F3 /* SettingsView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -155,7 +181,11 @@
 			isa = PBXGroup;
 			children = (
 				59776D22C8DEC46B3B41F31D /* AIUsageMonitorTests.swift */,
+				6AB3D4304A19499B38FCB74D /* AuthManagerTests.swift */,
+				954856F70552CA6794541FA9 /* ClaudeAPIClientTests.swift */,
 				A3AF9485AFE1BDA9002D261A /* UsageDataTests.swift */,
+				BDE2EEC076C4F430D68F1376 /* UsageStoreTests.swift */,
+				7255D37839B6718A02074F7E /* UsageViewModelTests.swift */,
 			);
 			path = AIUsageMonitorTests;
 			sourceTree = "<group>";
@@ -283,8 +313,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8F27860F15F7CAC13D66D50A /* AuthManager.swift in Sources */,
+				DDC3803F0335F14960F6EC38 /* ClaudeAPIClient.swift in Sources */,
 				6B64A3B8764E06975FF71E27 /* Shared.swift in Sources */,
 				1453008A06B2122DD1A57CE3 /* UsageData.swift in Sources */,
+				3066F7A0B68C20EB63559357 /* UsageStore.swift in Sources */,
+				503A1A90BDDDC4713E56E5EA /* UsageViewModel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -293,7 +327,11 @@
 			buildActionMask = 2147483647;
 			files = (
 				8F80E91319399293AB860FDA /* AIUsageMonitorTests.swift in Sources */,
+				BDC208057C75CC0A9F4903BC /* AuthManagerTests.swift in Sources */,
+				A361AED1AEE13334CC5F4B53 /* ClaudeAPIClientTests.swift in Sources */,
 				9394578C23036F2C2F74AD56 /* UsageDataTests.swift in Sources */,
+				E0593F7B10A2248B8DCAF04C /* UsageStoreTests.swift in Sources */,
+				0F5FDFB2DA2D1B2FBB77262B /* UsageViewModelTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -302,6 +340,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				0AD527C330783B3283891A7B /* AIUsageApp.swift in Sources */,
+				F1A2B3C4D5E6F7A8B9C0D1E2 /* UsageDropdownView.swift in Sources */,
+				F2A3B4C5D6E7F8A9B0C1D2E3 /* SettingsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -488,8 +528,8 @@
 		6DCD45C003B6BE24E79AADDA /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
 				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -497,15 +537,14 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.aiusagemonitor.AIUsageMonitorTests;
 				SDKROOT = macosx;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AIUsageMonitor.app/Contents/MacOS/AIUsageMonitor";
 			};
 			name = Debug;
 		};
 		785FE844E446E7043B66241D /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
 				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
@@ -513,7 +552,6 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.aiusagemonitor.AIUsageMonitorTests;
 				SDKROOT = macosx;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AIUsageMonitor.app/Contents/MacOS/AIUsageMonitor";
 			};
 			name = Release;
 		};
