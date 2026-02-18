@@ -37,17 +37,22 @@ final class UsageHistoryStoreTests: XCTestCase {
         XCTAssertEqual(history[0].fiveHourUtilization, 50.0)
     }
 
-    func testCapsAtMaxEntries() {
-        let (store, _) = makeStore()
-        for i in 0..<365 {
-            let snap = UsageSnapshot(
-                timestamp: Date().addingTimeInterval(TimeInterval(i * 30)),
-                fiveHourUtilization: Double(i),
-                sevenDayUtilization: 0
-            )
-            store.append(snap)
+    func testCapsAtMaxEntries() throws {
+        let (store, defaults) = makeStore()
+        // Inject 361 recent snapshots directly (avoids 361 slow append iterations)
+        let now = Date()
+        let snapshots: [UsageSnapshot] = (0..<361).map { i in
+            UsageSnapshot(timestamp: now.addingTimeInterval(TimeInterval(i * 30)),
+                          fiveHourUtilization: Double(i),
+                          sevenDayUtilization: 0)
         }
-        XCTAssertLessThanOrEqual(store.load().count, 360)
+        let data = try JSONEncoder.apiEncoder.encode(snapshots)
+        defaults.set(data, forKey: "usageHistory")
+
+        // One more append should trigger the cap and reduce to 360
+        store.append(UsageSnapshot(timestamp: now.addingTimeInterval(361 * 30),
+                                   fiveHourUtilization: 361, sevenDayUtilization: 0))
+        XCTAssertEqual(store.load().count, 360)
     }
 
     func testPersistsAcrossInstances() {

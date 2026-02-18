@@ -1,6 +1,7 @@
 import Foundation
 
-public final class UsageHistoryStore: Sendable {
+/// All mutating methods must be called from the same actor (in practice @MainActor via UsageViewModel).
+public final class UsageHistoryStore: @unchecked Sendable {
     private let defaults: UserDefaults
     private static let key = "usageHistory"
     private static let maxEntries = 360
