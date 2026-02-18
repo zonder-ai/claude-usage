@@ -24,6 +24,8 @@
 		BDC208057C75CC0A9F4903BC /* AuthManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AB3D4304A19499B38FCB74D /* AuthManagerTests.swift */; };
 		DDC3803F0335F14960F6EC38 /* ClaudeAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91F0391EB2C1196893557B52 /* ClaudeAPIClient.swift */; };
 		E0593F7B10A2248B8DCAF04C /* UsageStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDE2EEC076C4F430D68F1376 /* UsageStoreTests.swift */; };
+		0B63D93B78674F34BDEFF50D /* UsageHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF401D7F67AF48919F31188C /* UsageHistoryStore.swift */; };
+		27112E28AD064936AF71A415 /* UsageHistoryStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF23CCFFB8334A5D98EE7E5A /* UsageHistoryStoreTests.swift */; };
 		F1A2B3C4D5E6F7A8B9C0D1E2 /* UsageDropdownView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D0E1F2 /* UsageDropdownView.swift */; };
 		F2A3B4C5D6E7F8A9B0C1D2E3 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B3C4D5E6F7A8B9C0D1E2F3 /* SettingsView.swift */; };
 		BB1A2B3C4D5E6F78901A2B3C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA1A2B3C4D5E6F78901A2B3C /* Assets.xcassets */; };
@@ -98,6 +100,8 @@
 		E082EA11D1341A7CCE2107D0 /* UsageViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageViewModel.swift; sourceTree = "<group>"; };
 		E2235E34EF0E37B7F0A06BB7 /* AIUsageMonitor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AIUsageMonitor.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E4F503F20863225F5D9E8F77 /* UsageStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageStore.swift; sourceTree = "<group>"; };
+		AF401D7F67AF48919F31188C /* UsageHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageHistoryStore.swift; sourceTree = "<group>"; };
+		CF23CCFFB8334A5D98EE7E5A /* UsageHistoryStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageHistoryStoreTests.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6A7B8C9D0E1F2 /* UsageDropdownView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageDropdownView.swift; sourceTree = "<group>"; };
 		A2B3C4D5E6F7A8B9C0D1E2F3 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		AA1A2B3C4D5E6F78901A2B3C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -155,6 +159,7 @@
 				2AC17EC375044E49FCA0B58C /* AuthManager.swift */,
 				91F0391EB2C1196893557B52 /* ClaudeAPIClient.swift */,
 				E4F503F20863225F5D9E8F77 /* UsageStore.swift */,
+				AF401D7F67AF48919F31188C /* UsageHistoryStore.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -198,6 +203,7 @@
 				954856F70552CA6794541FA9 /* ClaudeAPIClientTests.swift */,
 				A3AF9485AFE1BDA9002D261A /* UsageDataTests.swift */,
 				BDE2EEC076C4F430D68F1376 /* UsageStoreTests.swift */,
+				CF23CCFFB8334A5D98EE7E5A /* UsageHistoryStoreTests.swift */,
 				7255D37839B6718A02074F7E /* UsageViewModelTests.swift */,
 			);
 			path = AIUsageMonitorTests;
@@ -333,6 +339,7 @@
 				6B64A3B8764E06975FF71E27 /* Shared.swift in Sources */,
 				1453008A06B2122DD1A57CE3 /* UsageData.swift in Sources */,
 				3066F7A0B68C20EB63559357 /* UsageStore.swift in Sources */,
+				0B63D93B78674F34BDEFF50D /* UsageHistoryStore.swift in Sources */,
 				503A1A90BDDDC4713E56E5EA /* UsageViewModel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -346,6 +353,7 @@
 				A361AED1AEE13334CC5F4B53 /* ClaudeAPIClientTests.swift in Sources */,
 				9394578C23036F2C2F74AD56 /* UsageDataTests.swift in Sources */,
 				E0593F7B10A2248B8DCAF04C /* UsageStoreTests.swift in Sources */,
+				27112E28AD064936AF71A415 /* UsageHistoryStoreTests.swift in Sources */,
 				0F5FDFB2DA2D1B2FBB77262B /* UsageViewModelTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
