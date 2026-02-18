@@ -73,17 +73,55 @@ public final class AuthManager: NSObject, ObservableObject {
 
     // MARK: - Load
 
-    /// Try Claude Code's Keychain first, then the app's own stored token.
+    /// Quick synchronous load — use on startup for an immediate initial state.
     public func loadToken() {
-        if let token = loadFromClaudeCode() {
-            state = token
-            return
-        }
-        if let token = loadFromAppKeychain() {
-            state = token
-            return
-        }
+        if let token = loadFromClaudeCode() { state = token; return }
+        if let token = loadFromAppKeychain() { state = token; return }
         state = .notAuthenticated
+    }
+
+    /// Async token refresh — call before every API request.
+    /// 1. Re-reads Claude Code keychain to pick up any silent refresh it may have done.
+    /// 2. If the token is still expired, uses the refresh token to get a new one.
+    public func ensureValidToken() async {
+        // Re-read Claude Code keychain (fast, local — picks up Claude Code auto-refreshes)
+        if let fresh = loadFromClaudeCode() { state = fresh }
+
+        // Token valid for more than 1 minute — nothing else to do
+        if case .authenticated(_, _, let exp) = state, exp > Date().addingTimeInterval(60) { return }
+
+        // Expired or nearly expired — find a refresh token
+        let rt: String? = {
+            if case .authenticated(_, let r, _) = state, !r.isEmpty { return r }
+            if let stored = loadFromAppKeychain(), case .authenticated(_, let r, _) = stored, !r.isEmpty { return r }
+            return nil
+        }()
+
+        guard let rt else { return }
+        await refreshAccessToken(using: rt)
+    }
+
+    private func refreshAccessToken(using refreshToken: String) async {
+        var request = URLRequest(url: Self.tokenURL)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let body: [String: String] = [
+            "grant_type":    "refresh_token",
+            "refresh_token": refreshToken,
+            "client_id":     Self.clientID,
+        ]
+        request.httpBody = try? JSONEncoder().encode(body)
+
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              let http = response as? HTTPURLResponse,
+              (200...299).contains(http.statusCode),
+              let token = try? JSONDecoder().decode(TokenResponse.self, from: data)
+        else { return }  // keep existing state on failure; will retry next poll
+
+        let expiresAt = Date().addingTimeInterval(TimeInterval(token.expiresIn))
+        saveToken(accessToken: token.accessToken,
+                  refreshToken: token.refreshToken ?? refreshToken,
+                  expiresAt: expiresAt)
     }
 
     private func loadFromClaudeCode() -> AuthState? {

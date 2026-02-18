@@ -67,29 +67,16 @@ public final class UsageViewModel: ObservableObject {
     }
 
     public func fetchUsage() {
-        guard case .authenticated(let token, _, _) = authManager.state else {
-            error = "Not authenticated — sign in via Settings"
-            return
-        }
-
-        if authManager.state.isExpired {
-            authManager.loadToken()
-            guard case .authenticated(let refreshedToken, _, _) = authManager.state else {
-                error = "Session expired — sign in again"
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            await self.authManager.ensureValidToken()
+            guard case .authenticated(let token, _, _) = self.authManager.state else {
+                self.error = "Not authenticated — sign in via Settings"
                 return
             }
-            performFetch(token: refreshedToken)
-        } else {
-            performFetch(token: token)
-        }
-    }
-
-    private func performFetch(token: String) {
-        isLoading = true
-        Task { [weak self] in
-            guard let self else { return }
+            self.isLoading = true
             do {
-                let response = try await apiClient.fetchUsage(accessToken: token)
+                let response = try await self.apiClient.fetchUsage(accessToken: token)
                 self.usage = response
                 self.error = nil
                 self.store.save(response)
