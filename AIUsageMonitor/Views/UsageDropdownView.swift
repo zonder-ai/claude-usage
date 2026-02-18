@@ -41,7 +41,7 @@ struct UsageDropdownView: View {
             // MARK: Usage rows
             if let usage = viewModel.usage {
                 UsageRowView(label: "5-hour", window: usage.fiveHour)
-                UsageRowView(label: "7-day", window: usage.sevenDay)
+                UsageRowView(label: "Weekly", window: usage.sevenDay)
             } else if viewModel.error == nil {
                 Text("Loading usage data…")
                     .foregroundColor(.secondary)
@@ -191,6 +191,7 @@ struct UsageRowView: View {
 
                 ProgressView(value: min(animatedUtilization / 100.0, 1.0))
                     .tint(level.color)
+                    .animation(.easeInOut(duration: 0.4), value: animatedUtilization)
 
                 Text("\(Int(window.utilization.rounded()))%")
                     .font(.subheadline.monospacedDigit())
@@ -198,20 +199,16 @@ struct UsageRowView: View {
                     .frame(width: 38, alignment: .trailing)
             }
 
-            Text("Resets in \(window.formattedTimeUntilReset)")
+            Text(window.formattedTimeUntilReset)
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .padding(.leading, 60)
         }
         .onAppear {
-            withAnimation(.easeInOut(duration: 0.6)) {
-                animatedUtilization = window.utilization
-            }
+            animatedUtilization = window.utilization
         }
         .onChange(of: window.utilization) { newValue in
-            withAnimation(.easeInOut(duration: 0.4)) {
-                animatedUtilization = newValue
-            }
+            animatedUtilization = newValue
         }
     }
 }

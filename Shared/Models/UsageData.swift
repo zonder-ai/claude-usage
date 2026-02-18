@@ -31,16 +31,18 @@ public struct UsageWindow: Codable, Equatable, Sendable {
     }
 
     public var formattedTimeUntilReset: String {
-        let remaining = max(0, timeUntilReset)
-        let hours = Int(remaining) / 3600
-        let minutes = (Int(remaining) % 3600) / 60
-
-        if hours >= 24 {
-            let days = hours / 24
-            let remainingHours = hours % 24
-            return "\(days)d \(remainingHours)h"
+        let formatter = DateFormatter()
+        formatter.locale = Locale.current
+        if timeUntilReset <= 24 * 3600 {
+            formatter.dateFormat = "HH:mm"
+            return "Resets at \(formatter.string(from: resetsAt))"
+        } else {
+            formatter.dateFormat = "EEEE"
+            let day = formatter.string(from: resetsAt)
+            formatter.dateFormat = "HH:mm"
+            let time = formatter.string(from: resetsAt)
+            return "Resets \(day) at \(time)"
         }
-        return "\(hours)h \(minutes)m"
     }
 }
 
