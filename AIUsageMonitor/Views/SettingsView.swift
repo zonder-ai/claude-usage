@@ -55,19 +55,16 @@ struct SettingsView: View {
                 .controlSize(.small)
             }
 
-        case .authenticated(_, _, let expiresAt):
+        case .authenticated(_, _, _):
             HStack {
                 Label("Signed in", systemImage: "checkmark.seal.fill")
                     .foregroundColor(.green)
                 Spacer()
-                Text("Expires \(expiresAt.formatted(.relative(presentation: .named)))")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                Button("Sign Out", role: .destructive) {
+                    viewModel.authManager.signOut()
+                }
+                .controlSize(.small)
             }
-            Button("Sign Out", role: .destructive) {
-                viewModel.authManager.signOut()
-            }
-            .controlSize(.small)
 
         case .error(let message):
             HStack {
