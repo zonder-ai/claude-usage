@@ -26,6 +26,7 @@
 		E0593F7B10A2248B8DCAF04C /* UsageStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDE2EEC076C4F430D68F1376 /* UsageStoreTests.swift */; };
 		F1A2B3C4D5E6F7A8B9C0D1E2 /* UsageDropdownView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D0E1F2 /* UsageDropdownView.swift */; };
 		F2A3B4C5D6E7F8A9B0C1D2E3 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B3C4D5E6F7A8B9C0D1E2F3 /* SettingsView.swift */; };
+		BB1A2B3C4D5E6F78901A2B3C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA1A2B3C4D5E6F78901A2B3C /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -99,7 +100,19 @@
 		E4F503F20863225F5D9E8F77 /* UsageStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageStore.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6A7B8C9D0E1F2 /* UsageDropdownView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageDropdownView.swift; sourceTree = "<group>"; };
 		A2B3C4D5E6F7A8B9C0D1E2F3 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		AA1A2B3C4D5E6F78901A2B3C /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXResourcesBuildPhase section */
+		EE1A2B3C4D5E6F78901A2B3C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BB1A2B3C4D5E6F78901A2B3C /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		650E1A0A59A7B8CA1876FA1A /* Frameworks */ = {
@@ -196,6 +209,7 @@
 				6C1D675E274CD8E624400031 /* AIUsageApp.swift */,
 				7CB788D7931984721AB02E77 /* AIUsageMonitor.entitlements */,
 				20DFADA42D405A0E83B7CA91 /* Info.plist */,
+				AA1A2B3C4D5E6F78901A2B3C /* Assets.xcassets */,
 				13E1F83A94211946A07F7F69 /* App */,
 				439C5EE7C3EDFC23F06DC34D /* Views */,
 			);
@@ -257,6 +271,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = E902BC40403D3A9D626CB4B2 /* Build configuration list for PBXNativeTarget "AIUsageMonitor" */;
 			buildPhases = (
+				EE1A2B3C4D5E6F78901A2B3C /* Resources */,
 				C97E5C1489AD9D68AFCDBCDA /* Sources */,
 				650E1A0A59A7B8CA1876FA1A /* Frameworks */,
 				CB902ACC9338F31ED1B588CF /* Embed Frameworks */,

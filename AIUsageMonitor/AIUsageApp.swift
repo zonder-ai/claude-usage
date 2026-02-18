@@ -14,7 +14,10 @@ struct AIUsageApp: App {
                 }
         } label: {
             HStack(spacing: 4) {
-                Image(systemName: "chart.bar.fill")
+                Image("ClaudeLogo")
+                    .resizable()
+                    .renderingMode(.template)
+                    .frame(width: 16, height: 16)
                     .foregroundStyle(viewModel.usageLevel.color)
                 Text(viewModel.menuBarText)
                     .monospacedDigit()

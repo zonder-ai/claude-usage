@@ -41,8 +41,8 @@ public final class UsageViewModel: ObservableObject {
     // MARK: - Derived state
 
     public var menuBarText: String {
-        guard let usage else { return "C: --" }
-        return "C: \(Int(usage.fiveHour.utilization.rounded()))%"
+        guard let usage else { return "--%"}
+        return "\(Int(usage.fiveHour.utilization.rounded()))%"
     }
 
     public var usageLevel: UsageLevel {
