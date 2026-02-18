@@ -50,6 +50,23 @@ struct UsageDropdownView: View {
             }
             .buttonStyle(MenuRowButtonStyle())
             .keyboardShortcut("q")
+
+            Divider()
+
+            HStack(spacing: 5) {
+                Text("powered by")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                Image("ZonderLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 14, height: 14)
+                Text("zonder.ai")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(.top, 2)
         }
         .padding()
         .frame(width: 270)
