@@ -1,5 +1,5 @@
 import AppKit
-import AuthenticationServices
+import CryptoKit
 import Foundation
 
 // MARK: - Credential Models
@@ -60,9 +60,17 @@ public final class AuthManager: NSObject, ObservableObject {
     private static let claudeCodeKeychainService = "Claude Code-credentials"
     private static let appKeychainService = "com.aiusagemonitor.oauth"
 
-    private var oauthSession: ASWebAuthenticationSession?
+    // OAuth constants extracted from Claude Code binary
+    private static let clientID    = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
+    private static let authURL     = URL(string: "https://claude.ai/oauth/authorize")!
+    private static let tokenURL    = URL(string: "https://platform.claude.com/v1/oauth/token")!
+    private static let redirectURI = "aiusagemonitor://oauth/callback"
+
+    private var pendingCodeVerifier: String?
 
     public override init() { super.init() }
+
+    // MARK: - Load
 
     /// Try Claude Code's Keychain first, then the app's own stored token.
     public func loadToken() {
@@ -77,134 +85,182 @@ public final class AuthManager: NSObject, ObservableObject {
         state = .notAuthenticated
     }
 
-    /// Read Claude Code's OAuth credentials from Keychain.
     private func loadFromClaudeCode() -> AuthState? {
         guard let data = keychainData(service: Self.claudeCodeKeychainService) else { return nil }
         guard let creds = try? JSONDecoder().decode(ClaudeCodeCredentials.self, from: data) else { return nil }
-
         let oauth = creds.claudeAiOauth
         let expiresAt = Date(timeIntervalSince1970: oauth.expiresAt / 1000)
-
-        return .authenticated(
-            accessToken: oauth.accessToken,
-            refreshToken: oauth.refreshToken,
-            expiresAt: expiresAt
-        )
+        return .authenticated(accessToken: oauth.accessToken,
+                              refreshToken: oauth.refreshToken,
+                              expiresAt: expiresAt)
     }
 
-    /// Load from this app's own Keychain entry (written after OAuth browser flow).
     private func loadFromAppKeychain() -> AuthState? {
         guard let data = keychainData(service: Self.appKeychainService),
               let stored = try? JSONDecoder().decode(StoredToken.self, from: data) else { return nil }
-
-        return .authenticated(
-            accessToken: stored.accessToken,
-            refreshToken: stored.refreshToken,
-            expiresAt: stored.expiresAt
-        )
+        return .authenticated(accessToken: stored.accessToken,
+                              refreshToken: stored.refreshToken,
+                              expiresAt: stored.expiresAt)
     }
 
-    private func keychainData(service: String) -> Data? {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
+    // MARK: - Browser OAuth (PKCE)
+
+    /// Opens the default browser to start a PKCE OAuth flow.
+    public func startOAuthFlow() {
+        let verifier   = makeCodeVerifier()
+        let challenge  = codeChallenge(for: verifier)
+        pendingCodeVerifier = verifier
+
+        var components = URLComponents(url: Self.authURL, resolvingAgainstBaseURL: false)!
+        components.queryItems = [
+            URLQueryItem(name: "app",                   value: "claude-code"),
+            URLQueryItem(name: "client_id",             value: Self.clientID),
+            URLQueryItem(name: "response_type",         value: "code"),
+            URLQueryItem(name: "redirect_uri",          value: Self.redirectURI),
+            URLQueryItem(name: "code_challenge",        value: challenge),
+            URLQueryItem(name: "code_challenge_method", value: "S256"),
+            URLQueryItem(name: "scope",                 value: "user:inference user:profile"),
         ]
-        var result: AnyObject?
-        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess else { return nil }
-        return result as? Data
+        guard let url = components.url else { return }
+        NSWorkspace.shared.open(url)
     }
 
-    /// Save token to this app's Keychain entry.
+    /// Call this when the app receives `aiusagemonitor://oauth/callback?code=…`.
+    public func handleOAuthCallback(url: URL) {
+        guard
+            let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+            let code       = components.queryItems?.first(where: { $0.name == "code" })?.value,
+            let verifier   = pendingCodeVerifier
+        else {
+            state = .error("Invalid OAuth callback")
+            return
+        }
+        pendingCodeVerifier = nil
+        Task { await exchangeCode(code: code, codeVerifier: verifier) }
+    }
+
+    private func exchangeCode(code: String, codeVerifier: String) async {
+        var request = URLRequest(url: Self.tokenURL)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let body: [String: String] = [
+            "grant_type":    "authorization_code",
+            "code":          code,
+            "redirect_uri":  Self.redirectURI,
+            "client_id":     Self.clientID,
+            "code_verifier": codeVerifier,
+        ]
+        request.httpBody = try? JSONEncoder().encode(body)
+
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse,
+                  (200...299).contains(http.statusCode) else {
+                state = .error("Token exchange failed")
+                return
+            }
+            let token = try JSONDecoder().decode(TokenResponse.self, from: data)
+            let expiresAt = Date().addingTimeInterval(TimeInterval(token.expiresIn))
+            saveToken(accessToken: token.accessToken,
+                      refreshToken: token.refreshToken ?? "",
+                      expiresAt: expiresAt)
+        } catch {
+            state = .error("Token exchange error: \(error.localizedDescription)")
+        }
+    }
+
+    // MARK: - PKCE Helpers
+
+    private func makeCodeVerifier() -> String {
+        var bytes = [UInt8](repeating: 0, count: 32)
+        _ = SecRandomCopyBytes(kSecRandomDefault, bytes.count, &bytes)
+        return Data(bytes).base64URLEncoded
+    }
+
+    private func codeChallenge(for verifier: String) -> String {
+        let hash = SHA256.hash(data: Data(verifier.utf8))
+        return Data(hash).base64URLEncoded
+    }
+
+    // MARK: - Keychain
+
     public func saveToken(accessToken: String, refreshToken: String, expiresAt: Date) {
-        guard let data = try? JSONEncoder().encode(StoredToken(
-            accessToken: accessToken,
-            refreshToken: refreshToken,
-            expiresAt: expiresAt
-        )) else { return }
+        guard let data = try? JSONEncoder().encode(StoredToken(accessToken: accessToken,
+                                                              refreshToken: refreshToken,
+                                                              expiresAt: expiresAt))
+        else { return }
 
         deleteKeychainItem(service: Self.appKeychainService)
 
         let addQuery: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
+            kSecClass as String:       kSecClassGenericPassword,
             kSecAttrService as String: Self.appKeychainService,
-            kSecValueData as String: data
+            kSecValueData as String:   data,
         ]
         let status = SecItemAdd(addQuery as CFDictionary, nil)
         guard status == errSecSuccess else {
             state = .error("Keychain write failed (\(status))")
             return
         }
-        state = .authenticated(accessToken: accessToken, refreshToken: refreshToken, expiresAt: expiresAt)
+        state = .authenticated(accessToken: accessToken,
+                               refreshToken: refreshToken,
+                               expiresAt: expiresAt)
     }
 
-    /// Start OAuth browser flow as fallback when no Keychain token found.
-    /// Opens Anthropic's OAuth page via ASWebAuthenticationSession.
-    public func startOAuthFlow() {
-        guard let authURL = URL(string: "https://console.anthropic.com/oauth/authorize") else { return }
-
-        let session = ASWebAuthenticationSession(
-            url: authURL,
-            callbackURLScheme: "aiusagemonitor"
-        ) { [weak self] callbackURL, error in
-            // clear the retained session after callback
-            Task { @MainActor [weak self] in self?.oauthSession = nil }
-            guard let self else { return }
-            if let error {
-                Task { @MainActor in self.state = .error(error.localizedDescription) }
-                return
-            }
-            guard let callbackURL,
-                  let components = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false),
-                  let token = components.queryItems?.first(where: { $0.name == "access_token" })?.value
-            else {
-                Task { @MainActor in self.state = .error("No token received") }
-                return
-            }
-            Task { @MainActor in
-                self.saveToken(
-                    accessToken: token,
-                    refreshToken: "",
-                    expiresAt: Date().addingTimeInterval(3600)
-                )
-            }
-        }
-        session.presentationContextProvider = self
-        session.prefersEphemeralWebBrowserSession = false
-        oauthSession = session
-        session.start()
-    }
-
-    /// Clear stored credentials and reset to unauthenticated.
     public func signOut() {
         deleteKeychainItem(service: Self.appKeychainService)
         state = .notAuthenticated
     }
 
+    private func keychainData(service: String) -> Data? {
+        let query: [String: Any] = [
+            kSecClass as String:       kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecReturnData as String:  true,
+            kSecMatchLimit as String:  kSecMatchLimitOne,
+        ]
+        var result: AnyObject?
+        guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess else { return nil }
+        return result as? Data
+    }
+
     private func deleteKeychainItem(service: String) {
         let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service
+            kSecClass as String:       kSecClassGenericPassword,
+            kSecAttrService as String: service,
         ]
         SecItemDelete(query as CFDictionary)
     }
 }
 
-// MARK: - ASWebAuthenticationPresentationContextProviding
+// MARK: - Internal Models
 
-extension AuthManager: ASWebAuthenticationPresentationContextProviding {
-    public func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
-        NSApp.windows.first(where: { $0.isKeyWindow })
-            ?? NSApp.windows.first
-            ?? ASPresentationAnchor()
-    }
-}
-
-// MARK: - Internal Storage
-
-struct StoredToken: Codable {
+private struct StoredToken: Codable {
     let accessToken: String
     let refreshToken: String
     let expiresAt: Date
+}
+
+private struct TokenResponse: Codable {
+    let accessToken: String
+    let expiresIn: Int
+    let refreshToken: String?
+
+    enum CodingKeys: String, CodingKey {
+        case accessToken  = "access_token"
+        case expiresIn    = "expires_in"
+        case refreshToken = "refresh_token"
+    }
+}
+
+// MARK: - Data Extension
+
+private extension Data {
+    var base64URLEncoded: String {
+        base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+    }
 }

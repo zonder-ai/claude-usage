@@ -8,6 +8,9 @@ struct AIUsageApp: App {
     var body: some Scene {
         MenuBarExtra {
             UsageDropdownView(viewModel: viewModel)
+                .onOpenURL { url in
+                    viewModel.authManager.handleOAuthCallback(url: url)
+                }
         } label: {
             HStack(spacing: 4) {
                 Image(systemName: "chart.bar.fill")
