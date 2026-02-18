@@ -52,6 +52,7 @@ public struct UsageResponse: Codable, Equatable, Sendable {
     }
 }
 
+// UsageLevel is derived from utilization at display time — intentionally not Codable.
 public enum UsageLevel: Equatable, Sendable {
     case normal    // 0-60%
     case warning   // 60-85%
@@ -76,18 +77,18 @@ public enum UsageLevel: Equatable, Sendable {
 
 extension JSONDecoder {
     public static let apiDecoder: JSONDecoder = {
+        let fractionalFormatter = ISO8601DateFormatter()
+        fractionalFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        let plainFormatter = ISO8601DateFormatter()
+        plainFormatter.formatOptions = [.withInternetDateTime]
+
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .custom { decoder in
             let container = try decoder.singleValueContainer()
             let dateStr = try container.decode(String.self)
-
-            let formatter = ISO8601DateFormatter()
-            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-            if let date = formatter.date(from: dateStr) { return date }
-
-            formatter.formatOptions = [.withInternetDateTime]
-            if let date = formatter.date(from: dateStr) { return date }
-
+            if let date = fractionalFormatter.date(from: dateStr) { return date }
+            if let date = plainFormatter.date(from: dateStr) { return date }
             throw DecodingError.dataCorruptedError(
                 in: container,
                 debugDescription: "Cannot parse date: \(dateStr)"

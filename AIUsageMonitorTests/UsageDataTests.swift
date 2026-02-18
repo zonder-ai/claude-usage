@@ -20,8 +20,10 @@ final class UsageDataTests: XCTestCase {
         let usage = try JSONDecoder.apiDecoder.decode(UsageResponse.self, from: json)
         XCTAssertEqual(usage.fiveHour.utilization, 72.0)
         XCTAssertEqual(usage.sevenDay.utilization, 35.0)
-        XCTAssertNotNil(usage.fiveHour.resetsAt)
-        XCTAssertNotNil(usage.sevenDay.resetsAt)
+        // 2026-02-18T15:59:59.943648+00:00 = 1771430399.943648 seconds since epoch
+        XCTAssertEqual(usage.fiveHour.resetsAt.timeIntervalSince1970, 1771430399.943648, accuracy: 0.001)
+        // 2026-02-22T03:59:59.943679+00:00 = 1771732799.943679 seconds since epoch
+        XCTAssertEqual(usage.sevenDay.resetsAt.timeIntervalSince1970, 1771732799.943679, accuracy: 0.001)
     }
 
     func testHigherUtilization() {
