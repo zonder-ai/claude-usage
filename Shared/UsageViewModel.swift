@@ -7,10 +7,13 @@ public final class UsageViewModel: ObservableObject {
     @Published public var error: String?
     @Published public var isLoading = false
     @Published public var notificationThresholds: [Int] = [50, 75, 90, 100]
+    @Published public var lastUpdated: Date?
+    @Published public var history: [UsageSnapshot] = []
 
     private let apiClient: ClaudeAPIClient
     public let authManager: AuthManager
     private let store: UsageStore
+    private let historyStore: UsageHistoryStore
     private let pollInterval: TimeInterval
     private var timer: Timer?
 
@@ -27,15 +30,18 @@ public final class UsageViewModel: ObservableObject {
         apiClient: ClaudeAPIClient = ClaudeAPIClient(),
         authManager: AuthManager? = nil,
         store: UsageStore? = nil,
+        historyStore: UsageHistoryStore? = nil,
         pollInterval: TimeInterval = 30
     ) {
         self.apiClient = apiClient
         self.authManager = authManager ?? AuthManager()
         self.store = store ?? UsageStore()
+        self.historyStore = historyStore ?? UsageHistoryStore()
         self.pollInterval = pollInterval
 
         // Load cached data to show something immediately on launch
         self.usage = self.store.load()
+        self.history = self.historyStore.load()
     }
 
     // MARK: - Derived state
@@ -79,12 +85,26 @@ public final class UsageViewModel: ObservableObject {
                 self.usage = response
                 self.error = nil
                 self.store.save(response)
+                self.recordSnapshot(for: response)
                 self.checkNotificationThresholds(response)
             } catch {
                 self.error = error.localizedDescription
             }
             self.isLoading = false
         }
+    }
+
+    // MARK: - History
+
+    func recordSnapshot(for response: UsageResponse) {
+        let snapshot = UsageSnapshot(
+            timestamp: Date(),
+            fiveHourUtilization: response.fiveHour.utilization,
+            sevenDayUtilization: response.sevenDay.utilization
+        )
+        historyStore.append(snapshot)
+        history = historyStore.load()
+        lastUpdated = Date()
     }
 
     // MARK: - Notifications
