@@ -5,6 +5,7 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject var viewModel: UsageViewModel
     @State private var launchAtLogin = (SMAppService.mainApp.status == .enabled)
+    @AppStorage("menuBarStyle") private var menuBarStyle = MenuBarStyle.percentage
 
     private let fixedThresholds = [50, 75, 90, 100]
 
@@ -29,12 +30,24 @@ struct SettingsView: View {
                     }
             }
 
+            Section("Menu Bar Style") {
+                Picker("Style", selection: $menuBarStyle) {
+                    Label("Percentage", systemImage: "percent")
+                        .tag(MenuBarStyle.percentage)
+                    Label("Circle", systemImage: "circle.dotted")
+                        .tag(MenuBarStyle.circle)
+                    Label("Bar", systemImage: "slider.horizontal.3")
+                        .tag(MenuBarStyle.bar)
+                }
+                .pickerStyle(.radioGroup)
+            }
+
             Section("Notifications") {
                 notificationsSection
             }
         }
         .formStyle(.grouped)
-        .frame(width: 380, height: 300)
+        .frame(width: 380, height: 360)
         .padding(.vertical, 8)
     }
 
