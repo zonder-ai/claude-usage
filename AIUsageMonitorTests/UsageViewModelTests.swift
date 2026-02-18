@@ -20,14 +20,14 @@ final class UsageViewModelTests: XCTestCase {
         XCTAssertEqual(vm.usageLevel, .warning)
     }
 
-    func testMenuBarTextShowsSevenDayWhenHigher() {
+    func testMenuBarTextShowsFiveHourUsage() {
         let vm = UsageViewModel(apiClient: ClaudeAPIClient(), authManager: AuthManager())
         vm.usage = UsageResponse(
             fiveHour: .init(utilization: 10.0, resetsAt: Date().addingTimeInterval(3600)),
             sevenDay: .init(utilization: 90.0, resetsAt: Date().addingTimeInterval(86400))
         )
-        XCTAssertEqual(vm.menuBarText, "C: 90%")
-        XCTAssertEqual(vm.usageLevel, .critical)
+        XCTAssertEqual(vm.menuBarText, "C: 10%")
+        XCTAssertEqual(vm.usageLevel, .normal)
     }
 
     func testMenuBarTextRoundsPercentage() {

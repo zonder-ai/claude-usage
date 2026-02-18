@@ -42,12 +42,12 @@ public final class UsageViewModel: ObservableObject {
 
     public var menuBarText: String {
         guard let usage else { return "C: --" }
-        return "C: \(Int(usage.higherUtilization.rounded()))%"
+        return "C: \(Int(usage.fiveHour.utilization.rounded()))%"
     }
 
     public var usageLevel: UsageLevel {
         guard let usage else { return .normal }
-        return UsageLevel.from(utilization: usage.higherUtilization)
+        return UsageLevel.from(utilization: usage.fiveHour.utilization)
     }
 
     // MARK: - Polling
