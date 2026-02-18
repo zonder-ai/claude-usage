@@ -1,10 +1,10 @@
 SCHEME     = AIUsageMonitor
 CONFIG     = Release
-DERIVED    = $(HOME)/Library/Developer/Xcode/DerivedData
 APP_NAME   = AIUsageMonitor.app
-BUILD_DIR  = $(shell xcodebuild -scheme $(SCHEME) -configuration $(CONFIG) -destination "platform=macOS" -showBuildSettings CODE_SIGN_IDENTITY="-" 2>/dev/null | awk '/BUILT_PRODUCTS_DIR/{print $$3}')
+VERSION   ?= $(shell git describe --tags --abbrev=0 2>/dev/null || echo "dev")
+BUILD_DIR  = $(shell xcodebuild -scheme $(SCHEME) -configuration $(CONFIG) -destination "platform=macOS" -showBuildSettings CODE_SIGN_IDENTITY="-" 2>/dev/null | awk -F ' = ' '/BUILT_PRODUCTS_DIR/{print $$2}')
 
-.PHONY: build install uninstall
+.PHONY: build install uninstall release
 
 build:
 	xcodebuild -scheme $(SCHEME) -configuration $(CONFIG) \
@@ -25,3 +25,10 @@ uninstall:
 	pkill -f $(SCHEME) 2>/dev/null; true
 	rm -rf "/Applications/$(APP_NAME)"
 	@echo "✓ Removed /Applications/$(APP_NAME)"
+
+release: build
+	$(eval BUILT_APP := $(shell find $(HOME)/Library/Developer/Xcode/DerivedData/AIUsageMonitor-*/Build/Products/Release -name "$(APP_NAME)" -maxdepth 1 2>/dev/null | head -1))
+	@mkdir -p release
+	@rm -f "release/AIUsageMonitor-$(VERSION).zip"
+	ditto -c -k --keepParent "$(BUILT_APP)" "release/AIUsageMonitor-$(VERSION).zip"
+	@echo "✓ Created release/AIUsageMonitor-$(VERSION).zip"
