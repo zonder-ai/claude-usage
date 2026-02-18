@@ -48,4 +48,42 @@ final class UsageDataTests: XCTestCase {
         XCTAssertEqual(UsageLevel.from(utilization: 85.1), .critical)
         XCTAssertEqual(UsageLevel.from(utilization: 100.0), .critical)
     }
+
+    func testUsageSnapshotEncodesAndDecodes() throws {
+        let now = Date(timeIntervalSince1970: 1_000_000)
+        let snapshot = UsageSnapshot(timestamp: now, fiveHourUtilization: 42.5, sevenDayUtilization: 18.0)
+        let data = try JSONEncoder.apiEncoder.encode(snapshot)
+        let decoded = try JSONDecoder.apiDecoder.decode(UsageSnapshot.self, from: data)
+        XCTAssertEqual(decoded.fiveHourUtilization, 42.5)
+        XCTAssertEqual(decoded.sevenDayUtilization, 18.0)
+        XCTAssertEqual(decoded.timestamp.timeIntervalSince1970, now.timeIntervalSince1970, accuracy: 0.001)
+    }
+
+    func testUsageWindowDecodesTokenFieldsWhenPresent() throws {
+        let json = """
+        {
+            "utilization": 55.0,
+            "resets_at": "2026-02-18T15:59:59.000000+00:00",
+            "tokens_used": 55000,
+            "tokens_limit": 100000
+        }
+        """.data(using: .utf8)!
+        let window = try JSONDecoder.apiDecoder.decode(UsageWindow.self, from: json)
+        XCTAssertEqual(window.tokensUsed, 55000)
+        XCTAssertEqual(window.tokensLimit, 100000)
+        XCTAssertEqual(window.tokensRemaining, 45000)
+    }
+
+    func testUsageWindowTokenFieldsNilWhenAbsent() throws {
+        let json = """
+        {
+            "utilization": 55.0,
+            "resets_at": "2026-02-18T15:59:59.000000+00:00"
+        }
+        """.data(using: .utf8)!
+        let window = try JSONDecoder.apiDecoder.decode(UsageWindow.self, from: json)
+        XCTAssertNil(window.tokensUsed)
+        XCTAssertNil(window.tokensLimit)
+        XCTAssertNil(window.tokensRemaining)
+    }
 }

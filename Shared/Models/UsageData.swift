@@ -4,15 +4,26 @@ import SwiftUI
 public struct UsageWindow: Codable, Equatable, Sendable {
     public let utilization: Double
     public let resetsAt: Date
+    public let tokensUsed: Int?
+    public let tokensLimit: Int?
 
-    public init(utilization: Double, resetsAt: Date) {
+    public init(utilization: Double, resetsAt: Date, tokensUsed: Int? = nil, tokensLimit: Int? = nil) {
         self.utilization = utilization
         self.resetsAt = resetsAt
+        self.tokensUsed = tokensUsed
+        self.tokensLimit = tokensLimit
     }
 
     enum CodingKeys: String, CodingKey {
         case utilization
-        case resetsAt = "resets_at"
+        case resetsAt    = "resets_at"
+        case tokensUsed  = "tokens_used"
+        case tokensLimit = "tokens_limit"
+    }
+
+    public var tokensRemaining: Int? {
+        guard let used = tokensUsed, let limit = tokensLimit else { return nil }
+        return max(0, limit - used)
     }
 
     public var timeUntilReset: TimeInterval {
@@ -30,6 +41,18 @@ public struct UsageWindow: Codable, Equatable, Sendable {
             return "\(days)d \(remainingHours)h"
         }
         return "\(hours)h \(minutes)m"
+    }
+}
+
+public struct UsageSnapshot: Codable, Equatable, Sendable {
+    public let timestamp: Date
+    public let fiveHourUtilization: Double
+    public let sevenDayUtilization: Double
+
+    public init(timestamp: Date, fiveHourUtilization: Double, sevenDayUtilization: Double) {
+        self.timestamp = timestamp
+        self.fiveHourUtilization = fiveHourUtilization
+        self.sevenDayUtilization = sevenDayUtilization
     }
 }
 
