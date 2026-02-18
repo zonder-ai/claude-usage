@@ -6,7 +6,7 @@ public final class UsageViewModel: ObservableObject {
     @Published public var usage: UsageResponse?
     @Published public var error: String?
     @Published public var isLoading = false
-    @Published public var notificationThresholds: [Int] = [75, 90, 100]
+    @Published public var notificationThresholds: [Int] = [50, 75, 90, 100]
 
     private let apiClient: ClaudeAPIClient
     public let authManager: AuthManager

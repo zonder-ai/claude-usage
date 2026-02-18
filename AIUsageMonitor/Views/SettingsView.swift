@@ -4,9 +4,9 @@ import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject var viewModel: UsageViewModel
-    @State private var newThreshold = ""
     @State private var launchAtLogin = (SMAppService.mainApp.status == .enabled)
-    @FocusState private var thresholdFieldFocused: Bool
+
+    private let fixedThresholds = [50, 75, 90, 100]
 
     var body: some View {
         Form {
@@ -87,100 +87,19 @@ struct SettingsView: View {
     // MARK: - Notifications Section
 
     private var notificationsSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Alert when usage exceeds:")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-
-            FlowLayout(spacing: 6) {
-                ForEach(viewModel.notificationThresholds.sorted(), id: \.self) { threshold in
-                    HStack(spacing: 2) {
-                        Text("\(threshold)%")
-                            .font(.caption)
-                        Button {
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+            ForEach(fixedThresholds, id: \.self) { threshold in
+                Toggle("\(threshold)%", isOn: Binding(
+                    get: { viewModel.notificationThresholds.contains(threshold) },
+                    set: { enabled in
+                        if enabled {
+                            viewModel.notificationThresholds.append(threshold)
+                        } else {
                             viewModel.notificationThresholds.removeAll { $0 == threshold }
-                        } label: {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 8, weight: .bold))
                         }
-                        .buttonStyle(.plain)
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.accentColor.opacity(0.15))
-                    .clipShape(Capsule())
-                }
+                ))
             }
-
-            HStack(spacing: 6) {
-                TextField("Add %", text: $newThreshold)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(width: 64)
-                    .focused($thresholdFieldFocused)
-                    .onSubmit(addThreshold)
-
-                Button("Add", action: addThreshold)
-                    .controlSize(.small)
-                    .disabled(parsedThreshold == nil)
-            }
-        }
-    }
-
-    private var parsedThreshold: Int? {
-        guard let v = Int(newThreshold.trimmingCharacters(in: .whitespaces)),
-              (1...100).contains(v),
-              !viewModel.notificationThresholds.contains(v)
-        else { return nil }
-        return v
-    }
-
-    private func addThreshold() {
-        guard let v = parsedThreshold else { return }
-        viewModel.notificationThresholds.append(v)
-        newThreshold = ""
-    }
-}
-
-// MARK: - FlowLayout
-
-/// Simple left-to-right wrapping layout for threshold chips.
-private struct FlowLayout: Layout {
-    var spacing: CGFloat = 8
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let width = proposal.width ?? 300
-        var currentX: CGFloat = 0
-        var currentY: CGFloat = 0
-        var rowHeight: CGFloat = 0
-
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            if currentX + size.width > width, currentX > 0 {
-                currentX = 0
-                currentY += rowHeight + spacing
-                rowHeight = 0
-            }
-            currentX += size.width + spacing
-            rowHeight = max(rowHeight, size.height)
-        }
-        return CGSize(width: width, height: currentY + rowHeight)
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        var currentX = bounds.minX
-        var currentY = bounds.minY
-        var rowHeight: CGFloat = 0
-
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            if currentX + size.width > bounds.maxX, currentX > bounds.minX {
-                currentX = bounds.minX
-                currentY += rowHeight + spacing
-                rowHeight = 0
-            }
-            subview.place(at: CGPoint(x: currentX, y: currentY), proposal: .unspecified)
-            currentX += size.width + spacing
-            rowHeight = max(rowHeight, size.height)
         }
     }
 }
