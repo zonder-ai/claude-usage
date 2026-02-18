@@ -54,7 +54,6 @@ public final class UsageViewModel: ObservableObject {
 
     public func startPolling() {
         stopPolling()  // invalidate any existing timer before scheduling a new one
-        authManager.loadToken()
         fetchUsage()
         timer = Timer.scheduledTimer(withTimeInterval: pollInterval, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in self?.fetchUsage() }

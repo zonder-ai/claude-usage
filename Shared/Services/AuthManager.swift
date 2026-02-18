@@ -1,6 +1,7 @@
 import AppKit
 import CryptoKit
 import Foundation
+import LocalAuthentication
 
 // MARK: - Credential Models
 
@@ -68,8 +69,37 @@ public final class AuthManager: NSObject, ObservableObject {
 
     private var pendingCodeVerifier: String?
     private var pendingState: String?
+    private var laContext: LAContext?
 
     public override init() { super.init() }
+
+    // MARK: - Biometric / LAContext
+
+    /// Returns a Touch-ID-authenticated LAContext, reusing the cached one
+    /// within a 1-hour window so the user isn't prompted on every poll cycle.
+    /// Falls back to password if Touch ID is unavailable or fails.
+    private func getOrCreateContext() async -> LAContext? {
+        // Reuse existing context if it has already been authenticated
+        if let ctx = laContext, ctx.evaluatedPolicyDomainState != nil { return ctx }
+
+        let ctx = LAContext()
+        // Don't re-prompt Touch ID if it was used within the last hour
+        ctx.touchIDAuthenticationAllowableReuseDuration = 3600
+
+        guard ctx.canEvaluatePolicy(.deviceOwnerAuthentication, error: nil) else { return nil }
+
+        do {
+            try await ctx.evaluatePolicy(
+                .deviceOwnerAuthentication,
+                localizedReason: "Access your Claude usage data"
+            )
+            laContext = ctx
+            return ctx
+        } catch {
+            laContext = nil
+            return nil
+        }
+    }
 
     // MARK: - Load
 
@@ -84,8 +114,11 @@ public final class AuthManager: NSObject, ObservableObject {
     /// 1. Re-reads Claude Code keychain to pick up any silent refresh it may have done.
     /// 2. If the token is still expired, uses the refresh token to get a new one.
     public func ensureValidToken() async {
+        // Authenticate once (Touch ID → password fallback), reuse for up to 1 hour
+        let ctx = await getOrCreateContext()
+
         // Re-read Claude Code keychain (fast, local — picks up Claude Code auto-refreshes)
-        if let fresh = loadFromClaudeCode() { state = fresh }
+        if let fresh = loadFromClaudeCode(context: ctx) { state = fresh }
 
         // Token valid for more than 1 minute — nothing else to do
         if case .authenticated(_, _, let exp) = state, exp > Date().addingTimeInterval(60) { return }
@@ -93,7 +126,7 @@ public final class AuthManager: NSObject, ObservableObject {
         // Expired or nearly expired — find a refresh token
         let rt: String? = {
             if case .authenticated(_, let r, _) = state, !r.isEmpty { return r }
-            if let stored = loadFromAppKeychain(), case .authenticated(_, let r, _) = stored, !r.isEmpty { return r }
+            if let stored = loadFromAppKeychain(context: ctx), case .authenticated(_, let r, _) = stored, !r.isEmpty { return r }
             return nil
         }()
 
@@ -124,8 +157,8 @@ public final class AuthManager: NSObject, ObservableObject {
                   expiresAt: expiresAt)
     }
 
-    private func loadFromClaudeCode() -> AuthState? {
-        guard let data = keychainData(service: Self.claudeCodeKeychainService) else { return nil }
+    private func loadFromClaudeCode(context: LAContext? = nil) -> AuthState? {
+        guard let data = keychainData(service: Self.claudeCodeKeychainService, context: context) else { return nil }
         guard let creds = try? JSONDecoder().decode(ClaudeCodeCredentials.self, from: data) else { return nil }
         let oauth = creds.claudeAiOauth
         let expiresAt = Date(timeIntervalSince1970: oauth.expiresAt / 1000)
@@ -134,8 +167,8 @@ public final class AuthManager: NSObject, ObservableObject {
                               expiresAt: expiresAt)
     }
 
-    private func loadFromAppKeychain() -> AuthState? {
-        guard let data = keychainData(service: Self.appKeychainService),
+    private func loadFromAppKeychain(context: LAContext? = nil) -> AuthState? {
+        guard let data = keychainData(service: Self.appKeychainService, context: context),
               let stored = try? JSONDecoder().decode(StoredToken.self, from: data) else { return nil }
         return .authenticated(accessToken: stored.accessToken,
                               refreshToken: stored.refreshToken,
@@ -258,13 +291,14 @@ public final class AuthManager: NSObject, ObservableObject {
         state = .notAuthenticated
     }
 
-    private func keychainData(service: String) -> Data? {
-        let query: [String: Any] = [
+    private func keychainData(service: String, context: LAContext? = nil) -> Data? {
+        var query: [String: Any] = [
             kSecClass as String:       kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecReturnData as String:  true,
             kSecMatchLimit as String:  kSecMatchLimitOne,
         ]
+        if let context { query[kSecUseAuthenticationContext as String] = context }
         var result: AnyObject?
         guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess else { return nil }
         return result as? Data
