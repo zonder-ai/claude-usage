@@ -6,9 +6,17 @@ final class UsageViewModelTests: XCTestCase {
 
     // MARK: - Helpers
 
+    @discardableResult
     private func makeIsolatedVM() -> UsageViewModel {
-        let store = UsageStore(defaults: UserDefaults(suiteName: "test.vm.\(UUID().uuidString)")!)
-        return UsageViewModel(apiClient: ClaudeAPIClient(), authManager: AuthManager(), store: store)
+        let suiteName = "test.vm.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        addTeardownBlock { defaults.removeSuite(named: suiteName) }
+        return UsageViewModel(
+            apiClient: ClaudeAPIClient(),
+            authManager: AuthManager(),
+            store: UsageStore(defaults: defaults),
+            historyStore: UsageHistoryStore(defaults: defaults)
+        )
     }
 
     // MARK: - menuBarText tests
