@@ -1,0 +1,49 @@
+name: AIUsageMonitor
+options:
+  bundleIdPrefix: com.aiusagemonitor
+  deploymentTarget:
+    macOS: "13.0"
+  xcodeVersion: "16.0"
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MACOSX_DEPLOYMENT_TARGET: "13.0"
+
+targets:
+  AIUsageMonitor:
+    type: application
+    platform: macOS
+    sources:
+      - path: AIUsageMonitor
+    dependencies:
+      - target: Shared
+    settings:
+      base:
+        INFOPLIST_FILE: AIUsageMonitor/Info.plist
+        CODE_SIGN_ENTITLEMENTS: AIUsageMonitor/AIUsageMonitor.entitlements
+        CODE_SIGN_STYLE: Automatic
+
+  Shared:
+    type: framework
+    platform: macOS
+    sources:
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.aiusagemonitor.Shared
+        INFOPLIST_FILE: Shared/Info.plist
+
+  AIUsageMonitorTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: AIUsageMonitorTests
+    dependencies:
+      - target: AIUsageMonitor
+      - target: Shared
+    settings:
+      base:
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/AIUsageMonitor.app/Contents/MacOS/AIUsageMonitor"
+        BUNDLE_LOADER: "$(TEST_HOST)"
