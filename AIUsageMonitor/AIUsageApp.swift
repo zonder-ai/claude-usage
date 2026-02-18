@@ -14,12 +14,13 @@ struct AIUsageApp: App {
                 }
         } label: {
             HStack(spacing: 4) {
-                Image("ClaudeLogo")
-                    .renderingMode(.template)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 16, height: 16)
-                    .foregroundStyle(viewModel.usageLevel.color)
+                Image(nsImage: {
+                    let img = NSImage(named: "ClaudeLogo") ?? NSImage()
+                    img.isTemplate = true
+                    img.size = NSSize(width: 16, height: 16)
+                    return img
+                }())
+                .foregroundStyle(viewModel.usageLevel.color)
                 Text(viewModel.menuBarText)
                     .monospacedDigit()
             }
