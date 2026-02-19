@@ -22,18 +22,17 @@ struct AIUsageApp: App {
                     return img
                 }())
 
-                switch menuBarStyle {
-                case .percentage:
+                if menuBarStyle == .percentage {
                     Text(viewModel.menuBarText)
                         .monospacedDigit()
                         .padding(.leading, 6)
-                case .circle:
+                } else if menuBarStyle == .circle {
                     CircleProgressView(
                         utilization: viewModel.usage?.fiveHour.utilization ?? 0,
                         color: viewModel.usageLevel.color
                     )
                     .padding(.leading, 4)
-                case .bar:
+                } else {
                     BarProgressView(
                         utilization: viewModel.usage?.fiveHour.utilization ?? 0,
                         color: viewModel.usageLevel.color
