@@ -20,8 +20,8 @@ A macOS menu bar app that shows your [Claude](https://claude.ai) usage in real t
 
 ## Install
 
-1. Download `AIUsageMonitor-vX.X.X.zip` from the [latest release](../../releases/latest)
-2. Unzip and drag **AIUsageMonitor.app** to your `/Applications` folder
+1. Download `ZonderClaudeUsage-vX.X.X.zip` from the [latest release](../../releases/latest)
+2. Unzip and drag **ZonderClaudeUsage.app** to your `/Applications` folder
 3. **First launch only:** right-click the app → **Open** (macOS requires this one-time step for apps without an Apple developer certificate)
 4. The app appears in your menu bar with the Claude logo and your current usage
 
@@ -52,5 +52,5 @@ Other targets:
 |---|---|
 | `make build` | Build only |
 | `make install` | Build + copy to /Applications + launch |
-| `make release VERSION=v1.2.0` | Build + create `release/AIUsageMonitor-v1.2.0.zip` |
+| `make release VERSION=v1.2.0` | Build + create `release/ZonderClaudeUsage-v1.2.0.zip` |
 | `make uninstall` | Quit + remove from /Applications |

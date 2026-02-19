@@ -31,6 +31,6 @@ uninstall:
 release: build
 	$(eval BUILT_APP := $(shell find $(HOME)/Library/Developer/Xcode/DerivedData/AIUsageMonitor-*/Build/Products/Release -name "$(APP_NAME)" -maxdepth 1 2>/dev/null | head -1))
 	@mkdir -p release
-	@rm -f "release/AIUsageMonitor-$(VERSION).zip"
-	ditto -c -k --keepParent "$(BUILT_APP)" "release/AIUsageMonitor-$(VERSION).zip"
-	@echo "✓ Created release/AIUsageMonitor-$(VERSION).zip"
+	@rm -f "release/ZonderClaudeUsage-$(VERSION).zip"
+	ditto -c -k --keepParent "$(BUILT_APP)" "release/ZonderClaudeUsage-$(VERSION).zip"
+	@echo "✓ Created release/ZonderClaudeUsage-$(VERSION).zip"
