@@ -1,6 +1,6 @@
 SCHEME     = AIUsageMonitor
 CONFIG     = Release
-APP_NAME   = AIUsageMonitor.app
+APP_NAME   = ZonderClaudeUsage.app
 VERSION   ?= $(shell git describe --tags --abbrev=0 2>/dev/null || echo "dev")
 BUILD_DIR  = $(shell xcodebuild -scheme $(SCHEME) -configuration $(CONFIG) -destination "platform=macOS" -showBuildSettings CODE_SIGN_IDENTITY="-" 2>/dev/null | awk -F ' = ' '/BUILT_PRODUCTS_DIR/{print $$2}')
 

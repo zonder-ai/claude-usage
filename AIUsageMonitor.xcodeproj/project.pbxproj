@@ -553,6 +553,7 @@
 					"@executable_path/../Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.aiusagemonitor.AIUsageMonitor;
+				PRODUCT_NAME = ZonderClaudeUsage;
 				SDKROOT = macosx;
 			};
 			name = Debug;
@@ -624,6 +625,7 @@
 					"@executable_path/../Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.aiusagemonitor.AIUsageMonitor;
+				PRODUCT_NAME = ZonderClaudeUsage;
 				SDKROOT = macosx;
 			};
 			name = Release;
