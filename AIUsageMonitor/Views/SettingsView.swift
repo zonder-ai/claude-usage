@@ -1,9 +1,11 @@
 import ServiceManagement
 import Shared
+import Sparkle
 import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject var viewModel: UsageViewModel
+    let updater: SPUUpdater
     @State private var launchAtLogin = (SMAppService.mainApp.status == .enabled)
     @AppStorage("menuBarStyle") private var menuBarStyle = MenuBarStyle.percentage
 
@@ -45,9 +47,13 @@ struct SettingsView: View {
             Section("Notifications") {
                 notificationsSection
             }
+
+            Section("Updates") {
+                CheckForUpdatesView(updater: updater)
+            }
         }
         .formStyle(.grouped)
-        .frame(width: 380, height: 360)
+        .frame(width: 380, height: 420)
         .padding(.vertical, 8)
     }
 

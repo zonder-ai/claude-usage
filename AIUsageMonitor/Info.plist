@@ -7,6 +7,14 @@
     <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
     <key>CFBundleName</key>
     <string>$(PRODUCT_NAME)</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.2.1</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>SUFeedURL</key>
+    <string>https://raw.githubusercontent.com/zonder-ai/claude-usage/main/appcast.xml</string>
+    <key>SUPublicEDKey</key>
+    <string>j2kgQ2ISzUKM+UhJcKHldSSXXvf9Uvc9cL6KHNucMfA=</string>
     <key>CFBundleURLTypes</key>
     <array>
         <dict>

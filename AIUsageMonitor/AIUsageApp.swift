@@ -1,9 +1,16 @@
 import ServiceManagement
 import Shared
+import Sparkle
 import SwiftUI
 
 @main
 struct AIUsageApp: App {
+    private let updaterController = SPUStandardUpdaterController(
+        startingUpdater: true,
+        updaterDelegate: nil,
+        userDriverDelegate: nil
+    )
+
     @StateObject private var viewModel = UsageViewModel()
     @AppStorage("menuBarStyle") private var menuBarStyle = MenuBarStyle.percentage
 
@@ -51,9 +58,9 @@ struct AIUsageApp: App {
         .menuBarExtraStyle(.window)
 
         Window("Settings", id: "settings") {
-            SettingsView(viewModel: viewModel)
+            SettingsView(viewModel: viewModel, updater: updaterController.updater)
         }
-        .defaultSize(width: 380, height: 360)
+        .defaultSize(width: 380, height: 420)
         .windowResizability(.contentSize)
     }
 }

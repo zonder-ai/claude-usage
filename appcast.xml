@@ -1,0 +1,18 @@
+<?xml version="1.0" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/" version="2.0">
+    <channel>
+        <title>ZonderClaudeUsage</title>
+        <item>
+            <title>Version 1.2.1</title>
+            <sparkle:version>1</sparkle:version>
+            <sparkle:shortVersionString>1.2.1</sparkle:shortVersionString>
+            <pubDate>Wed, 19 Feb 2026 13:20:00 +0100</pubDate>
+            <enclosure
+                url="https://github.com/zonder-ai/claude-usage/releases/download/v1.2.1/ZonderClaudeUsage-v1.2.1.zip"
+                sparkle:edSignature="5uhMImWP4uDHI2Ryn7v2B662hKtIQId9K0M/JhS4GWxQIt5lcPc1ZVoyDiCoePwYcdQw91mrU765F0lScupxAg=="
+                length="889284"
+                type="application/octet-stream"
+            />
+        </item>
+    </channel>
+</rss>
