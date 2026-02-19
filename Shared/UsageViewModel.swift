@@ -87,6 +87,9 @@ public final class UsageViewModel: ObservableObject {
                 self.store.save(response)
                 self.recordSnapshot(for: response)
                 self.checkNotificationThresholds(response)
+            } catch let apiErr as APIError where apiErr.isAuthError {
+                self.authManager.signOut()
+                self.error = "Session expired — please sign in again"
             } catch {
                 self.error = error.localizedDescription
             }

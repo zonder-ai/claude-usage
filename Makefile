@@ -18,7 +18,7 @@ build:
 
 install: build
 	$(eval BUILT_APP := $(shell find $(HOME)/Library/Developer/Xcode/DerivedData/AIUsageMonitor-*/Build/Products/Release -name "$(APP_NAME)" -maxdepth 1 2>/dev/null | head -1))
-	pkill -f $(SCHEME) 2>/dev/null; sleep 1; true
+	pkill -f ZonderClaudeUsage 2>/dev/null; sleep 1; true
 	rm -rf "/Applications/$(APP_NAME)"
 	cp -R "$(BUILT_APP)" "/Applications/$(APP_NAME)"
 	xattr -dr com.apple.quarantine "/Applications/$(APP_NAME)"
@@ -26,7 +26,7 @@ install: build
 	@echo "✓ Installed and launched /Applications/$(APP_NAME)"
 
 uninstall:
-	pkill -f $(SCHEME) 2>/dev/null; true
+	pkill -f ZonderClaudeUsage 2>/dev/null; true
 	rm -rf "/Applications/$(APP_NAME)"
 	@echo "✓ Removed /Applications/$(APP_NAME)"
 
