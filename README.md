@@ -1,4 +1,4 @@
-# Claude Usage
+# ZonderClaudeUsage
 
 A macOS menu bar app that shows your [Claude](https://claude.ai) usage in real time — 5-hour and 7-day windows with alerts when you're getting close to your limit.
 
@@ -23,7 +23,7 @@ A macOS menu bar app that shows your [Claude](https://claude.ai) usage in real t
 1. Download `ZonderClaudeUsage-vX.X.X.zip` from the [latest release](../../releases/latest)
 2. Unzip and drag **ZonderClaudeUsage.app** to your `/Applications` folder
 3. **First launch only:** right-click the app → **Open** (macOS requires this one-time step for apps without an Apple developer certificate)
-4. The app appears in your menu bar with the Claude logo and your current usage
+4. **ZonderClaudeUsage** appears in your menu bar with the Zonder x Anthropic logo and your current usage
 
 ## Usage
 
