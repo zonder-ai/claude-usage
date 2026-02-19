@@ -60,7 +60,8 @@ public final class AuthManager: NSObject, ObservableObject {
     private static let claudeCodeKeychainService = "Claude Code-credentials"
     private static let appKeychainService = "com.aiusagemonitor.oauth"
 
-    // OAuth constants extracted from Claude Code binary
+    // Public OAuth client ID from Claude Code (not a secret — public clients
+    // don't have client secrets; PKCE protects the authorization flow instead).
     private static let clientID    = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
     private static let authURL     = URL(string: "https://claude.ai/oauth/authorize")!
     private static let tokenURL    = URL(string: "https://platform.claude.com/v1/oauth/token")!

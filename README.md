@@ -54,3 +54,21 @@ Other targets:
 | `make install` | Build + copy to /Applications + launch |
 | `make release VERSION=v1.2.0` | Build + create `release/ZonderClaudeUsage-v1.2.0.zip` |
 | `make uninstall` | Quit + remove from /Applications |
+
+## How authentication works
+
+ZonderClaudeUsage needs an OAuth token to read your usage from `api.anthropic.com`. It tries these methods in order:
+
+1. **Your app's own token** — if you've previously signed in via the app, it stores a token in your Keychain under `com.aiusagemonitor.oauth`.
+2. **Refresh** — if the token is expired, it silently refreshes using the stored refresh token.
+3. **Claude Code's Keychain** — if you have [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed, the app can read its Keychain entry (`Claude Code-credentials`). macOS will show a **one-time permission prompt** — you can click "Always Allow" or deny it and use the app's own Sign In instead.
+4. **Browser OAuth** — click **Sign In** in Settings to authenticate via `claude.ai` with a standard PKCE flow.
+
+No credentials are ever sent anywhere except Anthropic's own OAuth and API endpoints.
+
+## Security and privacy
+
+- **No App Sandbox** — the app runs unsandboxed because macOS sandboxing blocks cross-app Keychain access (needed for step 3 above). If you prefer, you can skip Claude Code keychain access entirely and sign in via the browser.
+- **Tokens in Keychain** — OAuth tokens are stored in the macOS Keychain, not in plaintext files.
+- **Usage data only** — the only data cached to disk (in UserDefaults) is usage percentages and timestamps. No personal information is stored.
+- **Open source** — the full source is here for you to audit. The OAuth client ID in the code is a public identifier (not a secret).

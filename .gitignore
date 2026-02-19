@@ -31,5 +31,8 @@ build/
 # CocoaPods
 Pods/
 
+# Release artifacts
+release/
+
 # Secrets
 *.env
