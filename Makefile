@@ -1,15 +1,16 @@
 SCHEME     = AIUsageMonitor
+PROJECT    = AIUsageMonitor.xcodeproj
 CONFIG     = Release
 APP_NAME   = ZonderClaudeUsage.app
 VERSION   ?= $(shell git describe --tags --abbrev=0 2>/dev/null || echo "dev")
-BUILD_DIR  = $(shell xcodebuild -scheme $(SCHEME) -configuration $(CONFIG) -destination "platform=macOS" -showBuildSettings CODE_SIGN_IDENTITY="-" 2>/dev/null | awk -F ' = ' '/BUILT_PRODUCTS_DIR/{print $$2}')
+BUILD_DIR  = $(shell xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(CONFIG) -destination "platform=macOS" -showBuildSettings CODE_SIGN_IDENTITY="-" 2>/dev/null | awk -F ' = ' '/BUILT_PRODUCTS_DIR/{print $$2}')
 
 SIGN_UPDATE = $(shell find $(HOME)/Library/Developer/Xcode/DerivedData/AIUsageMonitor-*/SourcePackages/artifacts/sparkle/Sparkle/bin/sign_update -type f 2>/dev/null | head -1)
 
 .PHONY: build install uninstall release appcast
 
 build:
-	xcodebuild -scheme $(SCHEME) -configuration $(CONFIG) \
+	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(CONFIG) \
 		-destination "platform=macOS" \
 		CODE_SIGN_IDENTITY="-" \
 		CODE_SIGNING_REQUIRED=YES \
@@ -50,7 +51,8 @@ appcast:
 	@echo '        <title>ZonderClaudeUsage</title>' >> appcast.xml
 	@echo '        <item>' >> appcast.xml
 	@echo '            <title>Version $(VERSION)</title>' >> appcast.xml
-	@echo '            <sparkle:version>1</sparkle:version>' >> appcast.xml
+	$(eval BUNDLE_VERSION := $(shell /usr/libexec/PlistBuddy -c "Print :CFBundleVersion" AIUsageMonitor/Info.plist))
+	@echo '            <sparkle:version>$(BUNDLE_VERSION)</sparkle:version>' >> appcast.xml
 	@echo '            <sparkle:shortVersionString>$(VERSION)</sparkle:shortVersionString>' >> appcast.xml
 	@echo '            <pubDate>$(PUB_DATE)</pubDate>' >> appcast.xml
 	@echo '            <enclosure' >> appcast.xml
