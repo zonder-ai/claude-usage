@@ -11,8 +11,17 @@ struct UsageDropdownView: View {
 
             // MARK: Header
             HStack {
-                Text("Claude Usage")
-                    .font(.headline)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Claude Usage")
+                        .font(.headline)
+                    if let lastUpdated = viewModel.lastUpdated {
+                        TimelineView(.periodic(from: .now, by: 1)) { _ in
+                            Text(formattedLastUpdated(lastUpdated))
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
                 Spacer()
                 Button {
                     viewModel.fetchUsage()
@@ -91,15 +100,6 @@ struct UsageDropdownView: View {
                     Spacer()
                     Text("\(remaining.formatted()) / \(limit.formatted())")
                         .font(.caption.monospacedDigit())
-                        .foregroundColor(.secondary)
-                }
-            }
-
-            // MARK: Last updated (live ticking)
-            if let lastUpdated = viewModel.lastUpdated {
-                TimelineView(.periodic(from: .now, by: 1)) { _ in
-                    Text(formattedLastUpdated(lastUpdated))
-                        .font(.caption2)
                         .foregroundColor(.secondary)
                 }
             }
