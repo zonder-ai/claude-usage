@@ -1,5 +1,8 @@
 import Foundation
 import UserNotifications
+#if canImport(AppKit)
+import AppKit
+#endif
 
 @MainActor
 public final class UsageViewModel: ObservableObject {
@@ -42,6 +45,18 @@ public final class UsageViewModel: ObservableObject {
         // Load cached data to show something immediately on launch
         self.usage = self.store.load()
         self.history = self.historyStore.load()
+
+        // Refresh immediately whenever the Mac wakes from sleep or the user
+        // logs back in, so the number is never stale after a restart/wake.
+        #if canImport(AppKit)
+        NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.fetchUsage() }
+        }
+        #endif
     }
 
     // MARK: - Derived state
