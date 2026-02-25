@@ -81,4 +81,20 @@ final class AgentToastStoreTests: XCTestCase {
         XCTAssertEqual(visible.map(\.title), ["Four", "Three", "Two"])
         XCTAssertTrue(visible.allSatisfy { $0.status == .running })
     }
+
+    func testEnqueueWithoutAnyTitleIsIgnored() {
+        let store = AgentToastStore()
+        let event = ClaudeQueueTaskEvent(
+            sessionId: "session-1",
+            taskId: "task-1",
+            description: nil,
+            taskType: nil,
+            timestamp: Date(),
+            kind: .enqueue,
+            cwd: "/Users/example/repo"
+        )
+
+        store.apply(event: event)
+        XCTAssertTrue(store.visibleToasts(maxCount: 3).isEmpty)
+    }
 }

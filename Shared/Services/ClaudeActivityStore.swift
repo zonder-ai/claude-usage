@@ -11,6 +11,7 @@ public final class ClaudeActivityStore {
     private let historyFileURL: URL
     private let projectsRootURL: URL
     private let emitHistoricalEventsOnFirstPoll: Bool
+    private let initialPendingMaxAge: TimeInterval
     private let decoder = JSONDecoder()
     private let fileManager = FileManager.default
     private var didPrimeQueueReader = false
@@ -66,11 +67,13 @@ public final class ClaudeActivityStore {
     public init(
         historyFileURL: URL = ClaudeActivityStore.defaultHistoryFileURL,
         projectsRootURL: URL = ClaudeActivityStore.defaultProjectsRootURL,
-        emitHistoricalEventsOnFirstPoll: Bool = false
+        emitHistoricalEventsOnFirstPoll: Bool = false,
+        initialPendingMaxAge: TimeInterval = 30 * 60
     ) {
         self.historyFileURL = historyFileURL
         self.projectsRootURL = projectsRootURL
         self.emitHistoricalEventsOnFirstPoll = emitHistoricalEventsOnFirstPoll
+        self.initialPendingMaxAge = max(0, initialPendingMaxAge)
     }
 
     public func loadRecent(limit: Int, projectPath: String?) throws -> [ClaudeActivityEntry] {
@@ -324,9 +327,13 @@ public final class ClaudeActivityStore {
 
     private func parseQueuePayload(_ raw: Any?) -> ParsedQueuePayload? {
         if let dict = raw as? [String: Any] {
+            let description = dict["description"] as? String
+                ?? dict["title"] as? String
+                ?? dict["prompt"] as? String
+                ?? dict["text"] as? String
             return ParsedQueuePayload(
                 taskId: dict["task_id"] as? String,
-                description: sanitizedTaskDescription(dict["description"] as? String),
+                description: sanitizedTaskDescription(description),
                 taskType: dict["task_type"] as? String,
                 toolUseID: dict["tool_use_id"] as? String
             )
@@ -385,6 +392,7 @@ public final class ClaudeActivityStore {
     }
 
     private func initialPendingEvents(activeWorkspacePath: String?) -> [ClaudeQueueTaskEvent] {
+        let cutoff = Date().addingTimeInterval(-initialPendingMaxAge)
         let pending = queuedTasksBySession.flatMap { (sessionId, queued) in
             queued.map { task in
                 ClaudeQueueTaskEvent(
@@ -400,6 +408,8 @@ public final class ClaudeActivityStore {
         }
 
         guard let activeWorkspacePath else { return [] }
-        return pending.filter { $0.cwd == activeWorkspacePath }
+        return pending.filter { event in
+            event.cwd == activeWorkspacePath && event.timestamp >= cutoff
+        }
     }
 }

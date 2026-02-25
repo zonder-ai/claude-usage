@@ -91,6 +91,12 @@ final class ClaudeActivityStoreTests: XCTestCase {
         return root
     }
 
+    private func iso(_ date: Date) -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter.string(from: date)
+    }
+
     func testPollQueueEventsMapsRemoveToOldestEnqueuedTask() throws {
         let sessionFile = "projectA/session-1.jsonl"
         let lines = [
@@ -185,5 +191,29 @@ final class ClaudeActivityStoreTests: XCTestCase {
         XCTAssertEqual(result.events[0].description, "Can you refactor the sidebar?")
         XCTAssertEqual(result.events[1].kind, .remove)
         XCTAssertEqual(result.events[1].description, "Can you refactor the sidebar?")
+    }
+
+    func testPollQueueEventsInitialPendingFiltersOutStaleItems() throws {
+        let now = Date()
+        let stale = iso(now.addingTimeInterval(-7200))
+        let fresh = iso(now.addingTimeInterval(-60))
+        let sessionFile = "projectA/session-1.jsonl"
+        let lines = [
+            #"{"type":"progress","timestamp":"\#(fresh)","cwd":"/Users/example/repo","sessionId":"session-1"}"#,
+            #"{"type":"queue-operation","operation":"enqueue","timestamp":"\#(stale)","sessionId":"session-1","content":"{\"task_id\":\"task-old\",\"description\":\"Old task\"}"}"#,
+            #"{"type":"queue-operation","operation":"enqueue","timestamp":"\#(fresh)","sessionId":"session-1","content":"{\"task_id\":\"task-new\",\"description\":\"Fresh task\"}"}"#
+        ]
+        let projectsRoot = try makeTempProjectsRoot(sessionFiles: [(sessionFile, lines)])
+        let store = ClaudeActivityStore(
+            projectsRootURL: projectsRoot,
+            emitHistoricalEventsOnFirstPoll: false,
+            initialPendingMaxAge: 30 * 60
+        )
+
+        let result = try store.pollQueueEvents()
+
+        XCTAssertEqual(result.events.count, 1)
+        XCTAssertEqual(result.events.first?.taskId, "task-new")
+        XCTAssertEqual(result.events.first?.description, "Fresh task")
     }
 }

@@ -11,12 +11,13 @@ public final class AgentToastStore {
 
     public func apply(event: ClaudeQueueTaskEvent) {
         guard let taskKey = event.taskKey else { return }
-        let title = normalizedTitle(from: event)
 
         switch event.kind {
         case .enqueue:
+            guard let title = normalizedTitle(from: event) else { return }
             upsertRunningToast(taskKey: taskKey, title: title, at: event.timestamp)
         case .remove:
+            guard let title = normalizedTitle(from: event) else { return }
             finishToast(taskKey: taskKey, title: title, at: event.timestamp)
         }
     }
@@ -126,10 +127,19 @@ public final class AgentToastStore {
         }
     }
 
-    private func normalizedTitle(from event: ClaudeQueueTaskEvent) -> String {
+    private func normalizedTitle(from event: ClaudeQueueTaskEvent) -> String? {
         let text = (event.description ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         if !text.isEmpty { return text }
-        if let taskType = event.taskType, !taskType.isEmpty { return taskType }
-        return "Claude task"
+
+        let taskType = (event.taskType ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if !taskType.isEmpty {
+            return taskType
+                .replacingOccurrences(of: "_", with: " ")
+                .replacingOccurrences(of: "-", with: " ")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .capitalized
+        }
+
+        return nil
     }
 }
