@@ -8,6 +8,7 @@ struct SettingsView: View {
     let updater: SPUUpdater
     @State private var launchAtLogin = (SMAppService.mainApp.status == .enabled)
     @AppStorage("menuBarStyle") private var menuBarStyle = MenuBarStyle.percentage
+    @AppStorage("agentToastsEnabled") private var agentToastsEnabled = true
 
     private let fixedThresholds = [50, 75, 90, 100]
 
@@ -29,6 +30,11 @@ struct SettingsView: View {
                         } catch {
                             launchAtLogin = !enabled // revert on failure
                         }
+                    }
+
+                Toggle("Agent Activity Toasts", isOn: $agentToastsEnabled)
+                    .onChange(of: agentToastsEnabled) { enabled in
+                        viewModel.setAgentToastsEnabled(enabled)
                     }
             }
 
@@ -55,6 +61,9 @@ struct SettingsView: View {
         .formStyle(.grouped)
         .frame(width: 380, height: 420)
         .padding(.vertical, 8)
+        .onAppear {
+            viewModel.setAgentToastsEnabled(agentToastsEnabled)
+        }
     }
 
     // MARK: - Auth Section

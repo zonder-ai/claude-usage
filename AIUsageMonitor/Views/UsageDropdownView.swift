@@ -57,6 +57,36 @@ struct UsageDropdownView: View {
                     .font(.callout)
             }
 
+            // MARK: Claude activity
+            if !viewModel.activity.isEmpty {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text("Claude activity")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+
+                    ForEach(viewModel.activity.prefix(5)) { item in
+                        HStack(alignment: .top, spacing: 6) {
+                            Circle()
+                                .fill(Color.secondary.opacity(0.5))
+                                .frame(width: 4, height: 4)
+                                .padding(.top, 5)
+                            Text(item.text)
+                                .font(.caption)
+                                .lineLimit(2)
+                            Spacer(minLength: 8)
+                            Text(formattedActivityTimestamp(item.timestamp))
+                                .font(.caption2.monospacedDigit())
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+            } else if let activityError = viewModel.activityError {
+                Label(activityError, systemImage: "exclamationmark.triangle.fill")
+                    .foregroundColor(.orange)
+                    .font(.caption)
+                    .lineLimit(2)
+            }
+
             // MARK: Sparkline (5-hour trend)
             if viewModel.history.count >= 2 {
                 VStack(alignment: .leading, spacing: 4) {
@@ -148,6 +178,14 @@ struct UsageDropdownView: View {
         if elapsed < 60  { return "Updated \(Int(elapsed))s ago" }
         if elapsed < 300 { return "Updated \(Int(elapsed / 60))m ago" }
         return "Updated >5m ago"
+    }
+
+    private func formattedActivityTimestamp(_ date: Date) -> String {
+        let elapsed = Date().timeIntervalSince(date)
+        if elapsed < 60 { return "\(Int(elapsed))s" }
+        if elapsed < 3600 { return "\(Int(elapsed / 60))m" }
+        if elapsed < 86_400 { return "\(Int(elapsed / 3600))h" }
+        return "\(Int(elapsed / 86_400))d"
     }
 }
 

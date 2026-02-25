@@ -107,4 +107,41 @@ final class UsageViewModelTests: XCTestCase {
         XCTAssertEqual(vm.history[0].fiveHourUtilization, 42.0)
         XCTAssertNotNil(vm.lastUpdated)
     }
+
+    func testAgentToastsDisabledPreventsQueueToasts() throws {
+        let suiteName = "test.vm.toasts.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        addTeardownBlock { defaults.removeSuite(named: suiteName) }
+
+        let root = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+            .appendingPathComponent("claude-vm-toasts-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        addTeardownBlock { try? FileManager.default.removeItem(at: root) }
+
+        let sessionFile = root.appendingPathComponent("projectA/session-1.jsonl")
+        try FileManager.default.createDirectory(at: sessionFile.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let lines = [
+            #"{"type":"progress","timestamp":"2026-02-25T10:00:00.000Z","cwd":"/Users/example/repo","sessionId":"session-1"}"#,
+            #"{"type":"queue-operation","operation":"enqueue","timestamp":"2026-02-25T10:00:01.000Z","sessionId":"session-1","content":"{\"task_id\":\"task-1\",\"description\":\"Build project\",\"task_type\":\"local_bash\"}"}"#
+        ]
+        let payload = lines.joined(separator: "\n") + "\n"
+        try payload.data(using: .utf8)?.write(to: sessionFile)
+
+        let activityStore = ClaudeActivityStore(
+            projectsRootURL: root,
+            emitHistoricalEventsOnFirstPoll: true
+        )
+        let vm = UsageViewModel(
+            apiClient: ClaudeAPIClient(),
+            authManager: AuthManager(),
+            store: UsageStore(defaults: defaults),
+            historyStore: UsageHistoryStore(defaults: defaults),
+            activityStore: activityStore
+        )
+
+        vm.setAgentToastsEnabled(false)
+        vm.refreshQueueActivity()
+
+        XCTAssertTrue(vm.agentToasts.isEmpty)
+    }
 }

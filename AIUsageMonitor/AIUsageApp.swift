@@ -13,6 +13,8 @@ struct AIUsageApp: App {
 
     @StateObject private var viewModel = UsageViewModel()
     @AppStorage("menuBarStyle") private var menuBarStyle = MenuBarStyle.percentage
+    @AppStorage("agentToastsEnabled") private var agentToastsEnabled = true
+    private let toastOverlayController = ToastOverlayController()
 
     var body: some Scene {
         MenuBarExtra {
@@ -34,6 +36,8 @@ struct AIUsageApp: App {
                         .padding(.leading, 6)
                 }
                 .task {
+                    bindToastOverlay()
+                    viewModel.setAgentToastsEnabled(agentToastsEnabled)
                     viewModel.startPolling()
                     if SMAppService.mainApp.status == .notRegistered {
                         try? SMAppService.mainApp.register()
@@ -48,6 +52,8 @@ struct AIUsageApp: App {
                     color: viewModel.usageLevel.color
                 ))
                 .task {
+                    bindToastOverlay()
+                    viewModel.setAgentToastsEnabled(agentToastsEnabled)
                     viewModel.startPolling()
                     if SMAppService.mainApp.status == .notRegistered {
                         try? SMAppService.mainApp.register()
@@ -62,6 +68,16 @@ struct AIUsageApp: App {
         }
         .defaultSize(width: 380, height: 420)
         .windowResizability(.contentSize)
+    }
+
+    private func bindToastOverlay() {
+        viewModel.onAgentToastsChanged = { [weak toastOverlayController, weak viewModel] toasts in
+            toastOverlayController?.update(toasts: toasts) { toastID in
+                Task { @MainActor in
+                    viewModel?.dismissAgentToast(id: toastID)
+                }
+            }
+        }
     }
 }
 
