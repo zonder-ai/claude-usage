@@ -171,7 +171,7 @@ public final class UsageViewModel: ObservableObject {
 
             let filteredEvents = result.events.filter { event in
                 guard let workspace = currentWorkspacePath else { return true }
-                return event.cwd == workspace
+                return event.cwd == workspace || event.cwd == nil
             }
 
             for event in filteredEvents {

@@ -218,6 +218,8 @@ public final class ClaudeActivityStore {
             return
         }
 
+        processWorkspaceState(from: json)
+
         switch type {
         case "progress":
             processProgressLine(json)
@@ -229,6 +231,10 @@ public final class ClaudeActivityStore {
     }
 
     private func processProgressLine(_ json: [String: Any]) {
+        processWorkspaceState(from: json)
+    }
+
+    private func processWorkspaceState(from json: [String: Any]) {
         guard let cwd = json["cwd"] as? String,
               !cwd.isEmpty,
               let sessionId = json["sessionId"] as? String,
@@ -407,9 +413,11 @@ public final class ClaudeActivityStore {
             }
         }
 
-        guard let activeWorkspacePath else { return [] }
-        return pending.filter { event in
-            event.cwd == activeWorkspacePath && event.timestamp >= cutoff
+        if let activeWorkspacePath {
+            return pending.filter { event in
+                event.timestamp >= cutoff && (event.cwd == activeWorkspacePath || event.cwd == nil)
+            }
         }
+        return pending.filter { $0.timestamp >= cutoff }
     }
 }

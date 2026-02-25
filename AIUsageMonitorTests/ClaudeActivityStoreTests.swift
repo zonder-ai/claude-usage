@@ -216,4 +216,44 @@ final class ClaudeActivityStoreTests: XCTestCase {
         XCTAssertEqual(result.events.first?.taskId, "task-new")
         XCTAssertEqual(result.events.first?.description, "Fresh task")
     }
+
+    func testPollQueueEventsUsesCwdFromNonProgressLines() throws {
+        let sessionFile = "projectA/session-1.jsonl"
+        let lines = [
+            #"{"type":"user","timestamp":"2026-02-25T10:00:00.000Z","cwd":"/Users/example/repo","sessionId":"session-1"}"#,
+            #"{"type":"queue-operation","operation":"enqueue","timestamp":"2026-02-25T10:00:01.000Z","sessionId":"session-1","content":"{\"task_id\":\"task-1\",\"description\":\"Build project\"}"}"#
+        ]
+        let projectsRoot = try makeTempProjectsRoot(sessionFiles: [(sessionFile, lines)])
+        let store = ClaudeActivityStore(
+            projectsRootURL: projectsRoot,
+            emitHistoricalEventsOnFirstPoll: true
+        )
+
+        let result = try store.pollQueueEvents()
+
+        XCTAssertEqual(result.activeWorkspacePath, "/Users/example/repo")
+        XCTAssertEqual(result.events.count, 1)
+        XCTAssertEqual(result.events.first?.cwd, "/Users/example/repo")
+        XCTAssertEqual(result.events.first?.description, "Build project")
+    }
+
+    func testPollQueueEventsInitialPendingWithoutWorkspaceStillEmitsRecentTask() throws {
+        let recent = iso(Date().addingTimeInterval(-60))
+        let sessionFile = "projectA/session-1.jsonl"
+        let lines = [
+            #"{"type":"queue-operation","operation":"enqueue","timestamp":"\#(recent)","sessionId":"session-1","content":"{\"task_id\":\"task-1\",\"description\":\"Build project\"}"}"#
+        ]
+        let projectsRoot = try makeTempProjectsRoot(sessionFiles: [(sessionFile, lines)])
+        let store = ClaudeActivityStore(
+            projectsRootURL: projectsRoot,
+            emitHistoricalEventsOnFirstPoll: false,
+            initialPendingMaxAge: 3600
+        )
+
+        let result = try store.pollQueueEvents()
+
+        XCTAssertEqual(result.events.count, 1)
+        XCTAssertEqual(result.events.first?.taskId, "task-1")
+        XCTAssertEqual(result.events.first?.description, "Build project")
+    }
 }
