@@ -3,7 +3,6 @@ import Foundation
 public final class AgentToastStore {
     private var toastsByID: [String: AgentToastItem] = [:]
     private var activeToastIDByTaskKey: [String: String] = [:]
-    private var dismissedTaskKeys: Set<String> = []
     private let autoHideDoneAfter: TimeInterval
 
     public init(autoHideDoneAfter: TimeInterval = 4) {
@@ -24,9 +23,6 @@ public final class AgentToastStore {
 
     public func dismissToast(id: String) {
         guard let toast = toastsByID.removeValue(forKey: id) else { return }
-        if toast.status == .running {
-            dismissedTaskKeys.insert(toast.taskKey)
-        }
         if activeToastIDByTaskKey[toast.taskKey] == id {
             activeToastIDByTaskKey.removeValue(forKey: toast.taskKey)
         }
@@ -44,12 +40,14 @@ public final class AgentToastStore {
     public func reset() {
         toastsByID.removeAll()
         activeToastIDByTaskKey.removeAll()
-        dismissedTaskKeys.removeAll()
     }
 
     public func visibleToasts(maxCount: Int) -> [AgentToastItem] {
         guard maxCount > 0 else { return [] }
-        return sortedToasts().prefix(maxCount).map { $0 }
+        return sortedToasts()
+            .filter { $0.status == .running }
+            .prefix(maxCount)
+            .map { $0 }
     }
 
     // MARK: - Internals
@@ -66,7 +64,6 @@ public final class AgentToastStore {
                 wasDismissedByUser: false
             )
             toastsByID[existing.id] = existing
-            dismissedTaskKeys.remove(taskKey)
             return
         }
 
@@ -82,7 +79,6 @@ public final class AgentToastStore {
         )
         toastsByID[id] = item
         activeToastIDByTaskKey[taskKey] = id
-        dismissedTaskKeys.remove(taskKey)
     }
 
     private func finishToast(taskKey: String, title: String, at timestamp: Date) {
@@ -98,7 +94,6 @@ public final class AgentToastStore {
             )
             toastsByID[activeID] = active
             activeToastIDByTaskKey.removeValue(forKey: taskKey)
-            dismissedTaskKeys.remove(taskKey)
             return
         }
 
@@ -114,7 +109,6 @@ public final class AgentToastStore {
         )
         toastsByID[id] = done
         activeToastIDByTaskKey.removeValue(forKey: taskKey)
-        dismissedTaskKeys.remove(taskKey)
     }
 
     private func sortedToasts() -> [AgentToastItem] {

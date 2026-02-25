@@ -164,4 +164,26 @@ final class ClaudeActivityStoreTests: XCTestCase {
         XCTAssertEqual(result.events.first?.kind, .enqueue)
         XCTAssertEqual(result.events.first?.taskId, "task-1")
     }
+
+    func testPollQueueEventsParsesPlainStringContentAndDequeue() throws {
+        let sessionFile = "projectA/session-1.jsonl"
+        let lines = [
+            #"{"type":"progress","timestamp":"2026-02-25T10:00:00.000Z","cwd":"/Users/example/repo","sessionId":"session-1"}"#,
+            #"{"type":"queue-operation","operation":"enqueue","timestamp":"2026-02-25T10:00:01.000Z","sessionId":"session-1","content":"Can you refactor the sidebar?"}"#,
+            #"{"type":"queue-operation","operation":"dequeue","timestamp":"2026-02-25T10:00:02.000Z","sessionId":"session-1"}"#
+        ]
+        let projectsRoot = try makeTempProjectsRoot(sessionFiles: [(sessionFile, lines)])
+        let store = ClaudeActivityStore(
+            projectsRootURL: projectsRoot,
+            emitHistoricalEventsOnFirstPoll: true
+        )
+
+        let result = try store.pollQueueEvents()
+
+        XCTAssertEqual(result.events.count, 2)
+        XCTAssertEqual(result.events[0].kind, .enqueue)
+        XCTAssertEqual(result.events[0].description, "Can you refactor the sidebar?")
+        XCTAssertEqual(result.events[1].kind, .remove)
+        XCTAssertEqual(result.events[1].description, "Can you refactor the sidebar?")
+    }
 }

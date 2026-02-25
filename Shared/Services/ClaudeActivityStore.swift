@@ -56,6 +56,13 @@ public final class ClaudeActivityStore {
         }
     }
 
+    private struct ParsedQueuePayload {
+        let taskId: String?
+        let description: String?
+        let taskType: String?
+        let toolUseID: String?
+    }
+
     public init(
         historyFileURL: URL = ClaudeActivityStore.defaultHistoryFileURL,
         projectsRootURL: URL = ClaudeActivityStore.defaultProjectsRootURL,
@@ -242,7 +249,7 @@ public final class ClaudeActivityStore {
         }
 
         let workspacePath = latestWorkspaceBySession[sessionId]?.path
-        let payload = decodeQueueContent(json["content"] as? String)
+        let payload = parseQueuePayload(json["content"])
 
         switch operation {
         case "enqueue":
@@ -270,7 +277,7 @@ public final class ClaudeActivityStore {
                 )
             }
 
-        case "remove":
+        case "remove", "dequeue":
             var removedTask: QueuedTask?
             if let explicitTaskID = payload?.taskId {
                 removedTask = removeQueuedTask(sessionId: sessionId, matchingTaskID: explicitTaskID)
@@ -315,12 +322,50 @@ public final class ClaudeActivityStore {
         return removed
     }
 
-    private func decodeQueueContent(_ raw: String?) -> QueueContent? {
-        guard let raw,
-              let data = raw.data(using: .utf8) else {
+    private func parseQueuePayload(_ raw: Any?) -> ParsedQueuePayload? {
+        if let dict = raw as? [String: Any] {
+            return ParsedQueuePayload(
+                taskId: dict["task_id"] as? String,
+                description: sanitizedTaskDescription(dict["description"] as? String),
+                taskType: dict["task_type"] as? String,
+                toolUseID: dict["tool_use_id"] as? String
+            )
+        }
+
+        guard let text = raw as? String else {
             return nil
         }
-        return try? decoder.decode(QueueContent.self, from: data)
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        if trimmed.first == "{",
+           let data = trimmed.data(using: .utf8),
+           let decoded = try? decoder.decode(QueueContent.self, from: data) {
+            return ParsedQueuePayload(
+                taskId: decoded.taskId,
+                description: sanitizedTaskDescription(decoded.description),
+                taskType: decoded.taskType,
+                toolUseID: decoded.toolUseID
+            )
+        }
+
+        return ParsedQueuePayload(
+            taskId: nil,
+            description: sanitizedTaskDescription(trimmed),
+            taskType: nil,
+            toolUseID: nil
+        )
+    }
+
+    private func sanitizedTaskDescription(_ raw: String?) -> String? {
+        guard let raw else { return nil }
+        let flattened = raw
+            .replacingOccurrences(of: "\n", with: " ")
+            .replacingOccurrences(of: "\t", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !flattened.isEmpty else { return nil }
+        if flattened.count <= 120 { return flattened }
+        return String(flattened.prefix(117)) + "..."
     }
 
     private func generatedTaskID(sessionId: String, timestamp: Date) -> String {

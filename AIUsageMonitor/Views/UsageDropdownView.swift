@@ -57,24 +57,24 @@ struct UsageDropdownView: View {
                     .font(.callout)
             }
 
-            // MARK: Claude activity
-            if !viewModel.activity.isEmpty {
+            // MARK: Ongoing tasks
+            if !viewModel.agentToasts.isEmpty {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("Claude activity")
+                    Text("Ongoing tasks")
                         .font(.caption2)
                         .foregroundColor(.secondary)
 
-                    ForEach(viewModel.activity.prefix(5)) { item in
+                    ForEach(viewModel.agentToasts.prefix(3)) { item in
                         HStack(alignment: .top, spacing: 6) {
-                            Circle()
-                                .fill(Color.secondary.opacity(0.5))
-                                .frame(width: 4, height: 4)
-                                .padding(.top, 5)
-                            Text(item.text)
+                            ProgressView()
+                                .controlSize(.small)
+                                .frame(width: 10, height: 10)
+                                .padding(.top, 2)
+                            Text(item.title)
                                 .font(.caption)
                                 .lineLimit(2)
                             Spacer(minLength: 8)
-                            Text(formattedActivityTimestamp(item.timestamp))
+                            Text(formattedActivityTimestamp(item.startedAt))
                                 .font(.caption2.monospacedDigit())
                                 .foregroundColor(.secondary)
                         }
