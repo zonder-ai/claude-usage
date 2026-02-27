@@ -68,6 +68,22 @@ public struct ClaudeQueuePollResult: Equatable, Sendable {
     }
 }
 
+// MARK: - Transcript-based session activity
+
+public struct ClaudeSessionActivity: Equatable, Sendable {
+    public let sessionId: String
+    public let cwd: String?
+    public let toolLabel: String
+    public let lastSeenAt: Date
+
+    public init(sessionId: String, cwd: String?, toolLabel: String, lastSeenAt: Date) {
+        self.sessionId = sessionId
+        self.cwd = cwd
+        self.toolLabel = toolLabel
+        self.lastSeenAt = lastSeenAt
+    }
+}
+
 public enum AgentToastStatus: Equatable, Sendable {
     case running
     case done

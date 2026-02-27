@@ -9,6 +9,29 @@ public final class AgentToastStore {
         self.autoHideDoneAfter = autoHideDoneAfter
     }
 
+    /// Session-based apply (transcript approach). One toast per active session.
+    /// Sessions absent from the list have their running toasts finished.
+    public func apply(sessions: [ClaudeSessionActivity]) {
+        let activeKeys = Set(sessions.map(\.sessionId))
+
+        // Finish toasts for sessions that are no longer active
+        for (key, toastId) in activeToastIDByTaskKey where !activeKeys.contains(key) {
+            guard var toast = toastsByID[toastId], toast.status == .running else { continue }
+            toast = AgentToastItem(
+                id: toast.id, taskKey: toast.taskKey, title: toast.title,
+                status: .done, startedAt: toast.startedAt, finishedAt: Date(),
+                wasDismissedByUser: false
+            )
+            toastsByID[toast.id] = toast
+            activeToastIDByTaskKey.removeValue(forKey: key)
+        }
+
+        // Create or update toasts for active sessions
+        for session in sessions {
+            upsertRunningToast(taskKey: session.sessionId, title: session.toolLabel, at: session.lastSeenAt)
+        }
+    }
+
     public func apply(event: ClaudeQueueTaskEvent) {
         guard let taskKey = event.taskKey else { return }
 

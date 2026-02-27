@@ -19,6 +19,14 @@ public final class ClaudeActivityStore {
     private var trailingBufferByFile: [String: String] = [:]
     private var queuedTasksBySession: [String: [QueuedTask]] = [:]
     private var latestWorkspaceBySession: [String: WorkspaceState] = [:]
+
+    // Transcript-based activity (pixel-agents approach)
+    private struct SessionTool {
+        let label: String
+        let timestamp: Date
+        let cwd: String?
+    }
+    private var sessionLastTool: [String: SessionTool] = [:]
     private let fractionalFormatter: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -225,6 +233,8 @@ public final class ClaudeActivityStore {
             processProgressLine(json)
         case "queue-operation":
             processQueueOperationLine(json, emitEvents: emitEvents, emittedEvents: &emittedEvents)
+        case "assistant":
+            processAssistantLine(json)
         default:
             break
         }
@@ -232,6 +242,59 @@ public final class ClaudeActivityStore {
 
     private func processProgressLine(_ json: [String: Any]) {
         processWorkspaceState(from: json)
+    }
+
+    private func processAssistantLine(_ json: [String: Any]) {
+        guard let sessionId = json["sessionId"] as? String,
+              let timestampString = json["timestamp"] as? String,
+              let timestamp = parseISO8601(timestampString),
+              let message = json["message"] as? [String: Any],
+              let content = message["content"] as? [[String: Any]] else { return }
+
+        guard let toolUse = content.first(where: { $0["type"] as? String == "tool_use" }),
+              let toolName = toolUse["name"] as? String else { return }
+
+        let input = toolUse["input"] as? [String: Any] ?? [:]
+        let cwd = (json["cwd"] as? String).flatMap { $0.isEmpty ? nil : $0 }
+        sessionLastTool[sessionId] = SessionTool(
+            label: toolLabel(for: toolName, input: input),
+            timestamp: timestamp,
+            cwd: cwd
+        )
+    }
+
+    private func toolLabel(for name: String, input: [String: Any]) -> String {
+        switch name {
+        case "Bash":
+            let desc = (input["description"] as? String ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !desc.isEmpty else { return "Running command" }
+            return desc.count <= 50 ? desc : String(desc.prefix(47)) + "…"
+        case "Read":              return "Reading files"
+        case "Write":             return "Writing file"
+        case "Edit", "MultiEdit", "NotebookEdit": return "Editing files"
+        case "Glob":              return "Searching files"
+        case "Grep":              return "Searching code"
+        case "Task":              return "Spawning agent"
+        case "WebFetch":          return "Fetching page"
+        case "WebSearch":         return "Searching web"
+        case "TodoWrite", "TodoRead": return "Managing tasks"
+        default:                  return "Working…"
+        }
+    }
+
+    /// Returns sessions that have had tool-call activity within the last `idleTimeout` seconds.
+    /// Call this after `pollQueueEvents()` to get up-to-date results from the latest file reads.
+    public func currentTranscriptActivity(idleTimeout: TimeInterval = 10) -> [ClaudeSessionActivity] {
+        let cutoff = Date().addingTimeInterval(-idleTimeout)
+        return sessionLastTool.compactMap { sessionId, tool in
+            guard tool.timestamp >= cutoff else { return nil }
+            return ClaudeSessionActivity(
+                sessionId: sessionId,
+                cwd: tool.cwd,
+                toolLabel: tool.label,
+                lastSeenAt: tool.timestamp
+            )
+        }
     }
 
     private func processWorkspaceState(from json: [String: Any]) {

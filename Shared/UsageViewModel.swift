@@ -25,7 +25,6 @@ public final class UsageViewModel: ObservableObject {
     private let pollInterval: TimeInterval
     private var timer: Timer?
     private var queueMonitorTimer: Timer?
-    private var currentWorkspacePath: String?
     private let maxVisibleToasts = 3
     private let queuePollInterval: TimeInterval = 1
     private(set) public var isAgentToastsEnabled = true
@@ -163,27 +162,14 @@ public final class UsageViewModel: ObservableObject {
             return
         }
 
-        do {
-            let result = try activityStore.pollQueueEvents()
-            if let activeWorkspacePath = result.activeWorkspacePath {
-                currentWorkspacePath = activeWorkspacePath
-            }
+        // Advance file read offsets (drives both queue and transcript state)
+        try? activityStore.pollQueueEvents()
 
-            let filteredEvents = result.events.filter { event in
-                guard let workspace = currentWorkspacePath else { return true }
-                return event.cwd == workspace || event.cwd == nil
-            }
-
-            for event in filteredEvents {
-                toastStore.apply(event: event)
-            }
-
-            toastStore.tick(now: Date())
-            publishAgentToasts(toastStore.visibleToasts(maxCount: maxVisibleToasts))
-        } catch {
-            toastStore.tick(now: Date())
-            publishAgentToasts(toastStore.visibleToasts(maxCount: maxVisibleToasts))
-        }
+        // Transcript-based activity: one toast per session currently calling tools
+        let sessions = activityStore.currentTranscriptActivity(idleTimeout: 10)
+        toastStore.apply(sessions: sessions)
+        toastStore.tick(now: Date())
+        publishAgentToasts(toastStore.visibleToasts(maxCount: maxVisibleToasts))
     }
 
     private func startQueueMonitoring() {
