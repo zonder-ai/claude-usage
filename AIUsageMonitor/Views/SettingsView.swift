@@ -7,7 +7,6 @@ struct SettingsView: View {
     @ObservedObject var viewModel: UsageViewModel
     let updater: SPUUpdater
     @State private var launchAtLogin = (SMAppService.mainApp.status == .enabled)
-    @AppStorage("menuBarStyle") private var menuBarStyle = MenuBarStyle.percentage
     @AppStorage("agentToastsEnabled") private var agentToastsEnabled = true
 
     private let fixedThresholds = [50, 75, 90, 100]
@@ -36,18 +35,6 @@ struct SettingsView: View {
                     .onChange(of: agentToastsEnabled) { enabled in
                         viewModel.setAgentToastsEnabled(enabled)
                     }
-            }
-
-            Section("Menu Bar Style") {
-                Picker("Style", selection: $menuBarStyle) {
-                    Label("Percentage", systemImage: "percent")
-                        .tag(MenuBarStyle.percentage)
-                    Label("Circle", systemImage: "circle.dotted")
-                        .tag(MenuBarStyle.circle)
-                    Label("Bar", systemImage: "slider.horizontal.3")
-                        .tag(MenuBarStyle.bar)
-                }
-                .pickerStyle(.radioGroup)
             }
 
             Section("Notifications") {
