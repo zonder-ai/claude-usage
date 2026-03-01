@@ -3,18 +3,21 @@ PROJECT    = AIUsageMonitor.xcodeproj
 CONFIG     = Release
 APP_NAME   = ZonderClaudeUsage.app
 VERSION   ?= $(shell git describe --tags --abbrev=0 2>/dev/null || echo "dev")
-BUILD_DIR  = $(shell xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(CONFIG) -destination "platform=macOS" -showBuildSettings CODE_SIGN_IDENTITY="-" 2>/dev/null | awk -F ' = ' '/BUILT_PRODUCTS_DIR/{print $$2}')
+BUILD_DIR  = $(shell xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(CONFIG) -destination "platform=macOS" -showBuildSettings 2>/dev/null | awk -F ' = ' '/BUILT_PRODUCTS_DIR/{print $$2}')
 
+SIGN_ID     = "Developer ID Application: Guillermo De Lolmo (5HJ6NV9V3V)"
 SIGN_UPDATE = $(shell find $(HOME)/Library/Developer/Xcode/DerivedData/AIUsageMonitor-*/SourcePackages/artifacts/sparkle/Sparkle/bin/sign_update -type f 2>/dev/null | head -1)
 
-.PHONY: build install uninstall release appcast
+.PHONY: build install uninstall release notarize appcast
 
 build:
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(CONFIG) \
 		-destination "platform=macOS" \
-		CODE_SIGN_IDENTITY="-" \
+		CODE_SIGN_IDENTITY=$(SIGN_ID) \
+		CODE_SIGN_STYLE=Manual \
 		CODE_SIGNING_REQUIRED=YES \
 		CODE_SIGNING_ALLOWED=YES \
+		ENABLE_HARDENED_RUNTIME=YES \
 		build
 
 install: build
@@ -37,6 +40,17 @@ release: build
 	@rm -f "release/ZonderClaudeUsage-$(VERSION).zip"
 	ditto -c -k --keepParent "$(BUILT_APP)" "release/ZonderClaudeUsage-$(VERSION).zip"
 	@echo "✓ Created release/ZonderClaudeUsage-$(VERSION).zip"
+
+notarize:
+	@test -f "release/ZonderClaudeUsage-$(VERSION).zip" || { echo "Run 'make release VERSION=$(VERSION)' first"; exit 1; }
+	xcrun notarytool submit "release/ZonderClaudeUsage-$(VERSION).zip" \
+		--keychain-profile "AC_PASSWORD" \
+		--wait
+	$(eval BUILT_APP := $(shell find $(HOME)/Library/Developer/Xcode/DerivedData/AIUsageMonitor-*/Build/Products/Release -name "$(APP_NAME)" -maxdepth 1 2>/dev/null | head -1))
+	xcrun stapler staple "$(BUILT_APP)"
+	@rm -f "release/ZonderClaudeUsage-$(VERSION).zip"
+	ditto -c -k --keepParent "$(BUILT_APP)" "release/ZonderClaudeUsage-$(VERSION).zip"
+	@echo "✓ Notarized and re-zipped release/ZonderClaudeUsage-$(VERSION).zip"
 
 appcast:
 	@test -f "release/ZonderClaudeUsage-$(VERSION).zip" || { echo "Error: release/ZonderClaudeUsage-$(VERSION).zip not found. Run 'make release' first."; exit 1; }
