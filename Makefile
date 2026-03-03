@@ -17,10 +17,13 @@ build:
 		CODE_SIGN_IDENTITY=$(SIGN_ID) \
 		CODE_SIGN_STYLE=Manual \
 		DEVELOPMENT_TEAM=$(SIGN_TEAM) \
+		CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO \
 		CODE_SIGNING_REQUIRED=YES \
 		CODE_SIGNING_ALLOWED=YES \
 		ENABLE_HARDENED_RUNTIME=YES \
 		build
+	$(eval BUILT_APP := $(shell find $(HOME)/Library/Developer/Xcode/DerivedData/AIUsageMonitor-*/Build/Products/Release -name "$(APP_NAME)" -maxdepth 1 2>/dev/null | head -1))
+	codesign --force --deep --options runtime --timestamp --sign $(SIGN_ID) "$(BUILT_APP)"
 
 install: build
 	$(eval BUILT_APP := $(shell find $(HOME)/Library/Developer/Xcode/DerivedData/AIUsageMonitor-*/Build/Products/Release -name "$(APP_NAME)" -maxdepth 1 2>/dev/null | head -1))
