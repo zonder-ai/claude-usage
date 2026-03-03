@@ -5,7 +5,8 @@ APP_NAME   = ZonderClaudeUsage.app
 VERSION   ?= $(shell git describe --tags --abbrev=0 2>/dev/null || echo "dev")
 BUILD_DIR  = $(shell xcodebuild -project $(PROJECT) -scheme $(SCHEME) -configuration $(CONFIG) -destination "platform=macOS" -showBuildSettings 2>/dev/null | awk -F ' = ' '/BUILT_PRODUCTS_DIR/{print $$2}')
 
-SIGN_ID     = "Developer ID Application: Guillermo De Lolmo (5HJ6NV9V3V)"
+SIGN_ID     = "Developer ID Application: GUILLERMO DEL OLMO FERNANDEZ VALDES (X77R7CFNAY)"
+SIGN_TEAM   = X77R7CFNAY
 SIGN_UPDATE = $(shell find $(HOME)/Library/Developer/Xcode/DerivedData/AIUsageMonitor-*/SourcePackages/artifacts/sparkle/Sparkle/bin/sign_update -type f 2>/dev/null | head -1)
 
 .PHONY: build install uninstall release notarize appcast
@@ -15,6 +16,7 @@ build:
 		-destination "platform=macOS" \
 		CODE_SIGN_IDENTITY=$(SIGN_ID) \
 		CODE_SIGN_STYLE=Manual \
+		DEVELOPMENT_TEAM=$(SIGN_TEAM) \
 		CODE_SIGNING_REQUIRED=YES \
 		CODE_SIGNING_ALLOWED=YES \
 		ENABLE_HARDENED_RUNTIME=YES \
