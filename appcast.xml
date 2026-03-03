@@ -3,14 +3,14 @@
     <channel>
         <title>ZonderClaudeUsage</title>
         <item>
-            <title>Version v1.3.3</title>
+            <title>Version v1.3.4</title>
             <sparkle:version>5</sparkle:version>
-            <sparkle:shortVersionString>v1.3.3</sparkle:shortVersionString>
-            <pubDate>Fri, 27 Feb 2026 17:25:02 +0100</pubDate>
+            <sparkle:shortVersionString>v1.3.4</sparkle:shortVersionString>
+            <pubDate>Tue, 03 Mar 2026 22:51:51 +0100</pubDate>
             <enclosure
-                url="https://github.com/zonder-ai/claude-usage/releases/download/v1.3.3/ZonderClaudeUsage-v1.3.3.zip"
-                sparkle:edSignature="xbv0pxXQ7+ZDra+6zVkY55ZIa9KjHK7haw+G3nllDKSgV6lnC917Vg5isC9ofL0/EgBMT7lFQ+HYpEjbqh4zCg=="
-                length="1996360"
+                url="https://github.com/zonder-ai/claude-usage/releases/download/v1.3.4/ZonderClaudeUsage-v1.3.4.zip"
+                sparkle:edSignature="63EOV4WYeJF+fLAyX67vIVfmFrCcNw6WQa5yeDzezUwuzmE/UG9N7TttTFyrFQ0FXrlBSgPcgUSV2+y1DGl9Dw=="
+                length="2038595"
                 type="application/octet-stream"
             />
         </item>
