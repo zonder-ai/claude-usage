@@ -55,10 +55,17 @@ public enum AuthState: Equatable, Sendable {
 
 @MainActor
 public final class AuthManager: NSObject, ObservableObject {
+    enum OAuthCallbackDecision: Equatable {
+        case exchange(code: String, verifier: String)
+        case failure(String)
+    }
+
     @Published public var state: AuthState = .notAuthenticated
 
     private static let claudeCodeKeychainService = "Claude Code-credentials"
     private static let appKeychainService = "com.aiusagemonitor.oauth"
+    private static let pendingOAuthDefaultsKey = "com.aiusagemonitor.oauth.pending"
+    private static let pendingOAuthTTL: TimeInterval = 15 * 60
 
     // Public OAuth client ID from Claude Code (not a secret — public clients
     // don't have client secrets; PKCE protects the authorization flow instead).
@@ -69,8 +76,22 @@ public final class AuthManager: NSObject, ObservableObject {
 
     private var pendingCodeVerifier: String?
     private var pendingState: String?
+    private let openURL: (URL) -> Void
+    private let userDefaults: UserDefaults
 
-    public override init() { super.init() }
+    public override init() {
+        self.openURL = { url in
+            NSWorkspace.shared.open(url)
+        }
+        self.userDefaults = .standard
+        super.init()
+    }
+
+    init(openURL: @escaping (URL) -> Void, userDefaults: UserDefaults) {
+        self.openURL = openURL
+        self.userDefaults = userDefaults
+        super.init()
+    }
 
     // MARK: - Load
 
@@ -162,6 +183,7 @@ public final class AuthManager: NSObject, ObservableObject {
         let state      = makeCodeVerifier() // random opaque value
         pendingCodeVerifier = verifier
         pendingState = state
+        persistPendingOAuth(state: state, verifier: verifier)
 
         var components = URLComponents(url: Self.authURL, resolvingAgainstBaseURL: false)!
         components.queryItems = [
@@ -175,24 +197,60 @@ public final class AuthManager: NSObject, ObservableObject {
             URLQueryItem(name: "state",                 value: state),
         ]
         guard let url = components.url else { return }
-        NSWorkspace.shared.open(url)
+        openURL(url)
     }
 
     /// Call this when the app receives `aiusagemonitor://oauth/callback?code=…`.
     public func handleOAuthCallback(url: URL) {
-        guard
-            let components    = URLComponents(url: url, resolvingAgainstBaseURL: false),
-            let code          = components.queryItems?.first(where: { $0.name == "code" })?.value,
-            let returnedState = components.queryItems?.first(where: { $0.name == "state" })?.value,
-            returnedState     == pendingState,
-            let verifier      = pendingCodeVerifier
-        else {
-            state = .error("Invalid OAuth callback")
-            return
+        switch processOAuthCallback(url: url) {
+        case .exchange(let code, let verifier):
+            Task { await exchangeCode(code: code, codeVerifier: verifier) }
+        case .failure(let message):
+            state = .error(message)
         }
-        pendingCodeVerifier = nil
-        pendingState = nil
-        Task { await exchangeCode(code: code, codeVerifier: verifier) }
+    }
+
+    func processOAuthCallback(url: URL) -> OAuthCallbackDecision {
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else {
+            clearPendingOAuthState()
+            return .failure("Invalid OAuth callback URL")
+        }
+        let queryItems = components.queryItems ?? []
+        let query = Dictionary(queryItems.map { ($0.name, $0.value ?? "") }, uniquingKeysWith: { first, _ in first })
+
+        if let providerError = nonEmpty(query["error"]) {
+            clearPendingOAuthState()
+            let description = nonEmpty(query["error_description"])
+            return .failure(humanMessageForOAuthError(error: providerError, description: description))
+        }
+
+        guard let code = nonEmpty(query["code"]) else {
+            clearPendingOAuthState()
+            return .failure("OAuth callback missing authorization code")
+        }
+
+        guard let returnedState = nonEmpty(query["state"]) else {
+            clearPendingOAuthState()
+            return .failure("OAuth callback missing state")
+        }
+
+        if pendingState == nil || pendingCodeVerifier == nil {
+            restorePendingOAuthState()
+        }
+
+        guard let expectedState = pendingState,
+              let verifier = pendingCodeVerifier else {
+            clearPendingOAuthState()
+            return .failure("Sign-in session expired. Please try again.")
+        }
+
+        guard returnedState == expectedState else {
+            clearPendingOAuthState()
+            return .failure("OAuth state mismatch. Please try signing in again.")
+        }
+
+        clearPendingOAuthState()
+        return .exchange(code: code, verifier: verifier)
     }
 
     private func exchangeCode(code: String, codeVerifier: String) async {
@@ -237,6 +295,62 @@ public final class AuthManager: NSObject, ObservableObject {
     private func codeChallenge(for verifier: String) -> String {
         let hash = SHA256.hash(data: Data(verifier.utf8))
         return Data(hash).base64URLEncoded
+    }
+
+    private func humanMessageForOAuthError(error: String, description: String?) -> String {
+        switch error {
+        case "access_denied":
+            if let description {
+                return "Sign-in was canceled: \(description)"
+            }
+            return "Sign-in was canceled or denied."
+        case "invalid_request":
+            if let description {
+                return "Invalid sign-in request: \(description)"
+            }
+            return "Invalid sign-in request. Please try again."
+        default:
+            if let description {
+                return "OAuth error (\(error)): \(description)"
+            }
+            return "OAuth error: \(error)"
+        }
+    }
+
+    private func persistPendingOAuth(state: String, verifier: String) {
+        let payload = PendingOAuthPayload(
+            state: state,
+            verifier: verifier,
+            createdAt: Date()
+        )
+        guard let data = try? JSONEncoder().encode(payload) else { return }
+        userDefaults.set(data, forKey: Self.pendingOAuthDefaultsKey)
+    }
+
+    private func restorePendingOAuthState() {
+        guard let data = userDefaults.data(forKey: Self.pendingOAuthDefaultsKey),
+              let payload = try? JSONDecoder().decode(PendingOAuthPayload.self, from: data)
+        else { return }
+
+        if Date().timeIntervalSince(payload.createdAt) > Self.pendingOAuthTTL {
+            userDefaults.removeObject(forKey: Self.pendingOAuthDefaultsKey)
+            return
+        }
+
+        pendingState = payload.state
+        pendingCodeVerifier = payload.verifier
+    }
+
+    private func clearPendingOAuthState() {
+        pendingState = nil
+        pendingCodeVerifier = nil
+        userDefaults.removeObject(forKey: Self.pendingOAuthDefaultsKey)
+    }
+
+    private func nonEmpty(_ value: String?) -> String? {
+        guard let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !trimmed.isEmpty else { return nil }
+        return trimmed
     }
 
     // MARK: - Keychain
@@ -296,6 +410,12 @@ private struct StoredToken: Codable {
     let accessToken: String
     let refreshToken: String
     let expiresAt: Date
+}
+
+private struct PendingOAuthPayload: Codable {
+    let state: String
+    let verifier: String
+    let createdAt: Date
 }
 
 private struct TokenResponse: Codable {

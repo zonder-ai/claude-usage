@@ -3,8 +3,17 @@ import Shared
 import Sparkle
 import SwiftUI
 
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    var onOpenURLs: (([URL]) -> Void)?
+
+    func application(_ application: NSApplication, open urls: [URL]) {
+        onOpenURLs?(urls)
+    }
+}
+
 @main
 struct AIUsageApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     private let updaterController = SPUStandardUpdaterController(
         startingUpdater: true,
         updaterDelegate: nil,
@@ -34,6 +43,7 @@ struct AIUsageApp: App {
                     .padding(.leading, 6)
             }
             .task {
+                bindURLOpenHandler()
                 bindToastOverlay()
                 viewModel.setAgentToastsEnabled(agentToastsEnabled)
                 viewModel.startPolling()
@@ -57,6 +67,15 @@ struct AIUsageApp: App {
                 Task { @MainActor in
                     viewModel?.dismissAgentToast(id: toastID)
                 }
+            }
+        }
+    }
+
+    private func bindURLOpenHandler() {
+        appDelegate.onOpenURLs = { [authManager = viewModel.authManager] urls in
+            guard let url = urls.first else { return }
+            Task { @MainActor in
+                authManager.handleOAuthCallback(url: url)
             }
         }
     }
