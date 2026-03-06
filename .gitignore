@@ -33,6 +33,8 @@ Pods/
 
 # Release artifacts
 release/
+!scripts/release/
+!scripts/release/*.sh
 
 # Secrets
 *.env

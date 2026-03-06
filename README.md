@@ -55,6 +55,9 @@ Other targets:
 | `make release VERSION=v1.2.0` | Build + create `release/ZonderClaudeUsage-v1.2.0.zip` |
 | `make uninstall` | Quit + remove from /Applications |
 
+For distribution/release hardening (preflight checks, notarization flow, appcast gating), see:
+[docs/releasing.md](docs/releasing.md)
+
 ## How authentication works
 
 ZonderClaudeUsage needs an OAuth token to read your usage from `api.anthropic.com`. It tries these methods in order:

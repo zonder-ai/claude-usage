@@ -41,7 +41,6 @@ targets:
         INFOPLIST_FILE: AIUsageMonitor/Info.plist
         CODE_SIGN_ENTITLEMENTS: AIUsageMonitor/AIUsageMonitor.entitlements
         CODE_SIGN_STYLE: Manual
-        CODE_SIGN_IDENTITY: "-"
 
   Shared:
     type: framework
