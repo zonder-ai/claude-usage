@@ -54,17 +54,17 @@ if find "$APP_PATH" -name '._*' -print -quit | grep -q .; then
   fail "Found AppleDouble files (._*) in app bundle"
 fi
 
-set +e
-spctl_output=$(spctl --assess --type execute --verbose=4 "$APP_PATH" 2>&1)
-spctl_rc=$?
-set -e
-
 if [[ "$EXPECT_STATE" == "notarized" ]]; then
-  if [[ $spctl_rc -ne 0 ]]; then
-    printf '%s\n' "$spctl_output" >&2
-    fail "Expected notarized artifact, but spctl assessment failed"
-  fi
+  # Gatekeeper assessment can return "does not seem to be an app" for menu bar
+  # bundles when evaluated from temp extraction paths. Stapler validation is the
+  # stable notarization signal for the archived app payload.
+  xcrun stapler validate "$APP_PATH" >/dev/null 2>&1 || fail "Expected notarized artifact, but stapler validate failed"
 else
+  set +e
+  spctl_output=$(spctl --assess --type execute --verbose=4 "$APP_PATH" 2>&1)
+  spctl_rc=$?
+  set -e
+
   if [[ $spctl_rc -eq 0 ]]; then
     fail "Expected pre-notary artifact, but spctl passed (already notarized?)"
   fi
