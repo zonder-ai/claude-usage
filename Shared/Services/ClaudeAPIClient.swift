@@ -3,6 +3,7 @@ import Foundation
 public enum APIError: Error, LocalizedError {
     case noToken
     case httpError(statusCode: Int)
+    case rateLimited(retryAfter: TimeInterval?)
     case apiError(String)
     case decodingError(Error)
     case networkError(Error)
@@ -22,6 +23,8 @@ public enum APIError: Error, LocalizedError {
             return "Not authenticated"
         case .httpError(let code):
             return "HTTP error \(code)"
+        case .rateLimited:
+            return "Anthropic rate limit reached"
         case .apiError(let message):
             return message
         case .decodingError(let err):
@@ -75,6 +78,10 @@ public final class ClaudeAPIClient: Sendable {
             throw APIError.httpError(statusCode: -1)
         }
 
+        if http.statusCode == 429 {
+            throw APIError.rateLimited(retryAfter: retryAfterInterval(from: http))
+        }
+
         guard (200...299).contains(http.statusCode) else {
             throw APIError.httpError(statusCode: http.statusCode)
         }
@@ -90,5 +97,26 @@ public final class ClaudeAPIClient: Sendable {
         } catch {
             throw APIError.decodingError(error)
         }
+    }
+
+    private func retryAfterInterval(from response: HTTPURLResponse) -> TimeInterval? {
+        guard let rawValue = response.value(forHTTPHeaderField: "Retry-After")?
+            .trimmingCharacters(in: .whitespacesAndNewlines),
+            !rawValue.isEmpty else {
+            return nil
+        }
+
+        if let seconds = TimeInterval(rawValue), seconds > 0 {
+            return seconds
+        }
+
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "EEE, dd MMM yyyy HH:mm:ss 'GMT'"
+        guard let date = formatter.date(from: rawValue) else { return nil }
+
+        let interval = date.timeIntervalSinceNow
+        return interval > 0 ? interval : nil
     }
 }

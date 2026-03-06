@@ -20,9 +20,23 @@ public struct OAuthCredential: Codable {
 
 // MARK: - Auth State
 
+public enum AuthSource: String, Codable, Equatable, Sendable {
+    case appOAuth
+    case claudeCodeKeychain
+
+    public var description: String {
+        switch self {
+        case .appOAuth:
+            return "app OAuth"
+        case .claudeCodeKeychain:
+            return "Claude Code"
+        }
+    }
+}
+
 public enum AuthState: Equatable, Sendable {
     case notAuthenticated
-    case authenticated(accessToken: String, refreshToken: String, expiresAt: Date)
+    case authenticated(accessToken: String, refreshToken: String, expiresAt: Date, source: AuthSource)
     case error(String)
 
     public var isAuthenticated: Bool {
@@ -31,20 +45,25 @@ public enum AuthState: Equatable, Sendable {
     }
 
     public var accessToken: String? {
-        if case .authenticated(let token, _, _) = self { return token }
+        if case .authenticated(let token, _, _, _) = self { return token }
         return nil
     }
 
     public var isExpired: Bool {
-        guard case .authenticated(_, _, let expiresAt) = self else { return true }
+        guard case .authenticated(_, _, let expiresAt, _) = self else { return true }
         return expiresAt < Date()
+    }
+
+    public var sourceDescription: String? {
+        guard case .authenticated(_, _, _, let source) = self else { return nil }
+        return source.description
     }
 
     public static func == (lhs: AuthState, rhs: AuthState) -> Bool {
         switch (lhs, rhs) {
         case (.notAuthenticated, .notAuthenticated): return true
-        case let (.authenticated(a1, r1, e1), .authenticated(a2, r2, e2)):
-            return a1 == a2 && r1 == r2 && e1 == e2
+        case let (.authenticated(a1, r1, e1, s1), .authenticated(a2, r2, e2, s2)):
+            return a1 == a2 && r1 == r2 && e1 == e2 && s1 == s2
         case let (.error(m1), .error(m2)): return m1 == m2
         default: return false
         }
@@ -97,8 +116,8 @@ public final class AuthManager: NSObject, ObservableObject {
 
     /// Quick synchronous load — use on startup for an immediate initial state.
     public func loadToken() {
-        if let token = loadFromClaudeCode() { state = token; return }
         if let token = loadFromAppKeychain() { state = token; return }
+        if let token = loadFromClaudeCode() { state = token; return }
         state = .notAuthenticated
     }
 
@@ -107,11 +126,11 @@ public final class AuthManager: NSObject, ObservableObject {
     /// 2. If the token is still expired, uses the refresh token to get a new one.
     public func ensureValidToken() async {
         // 1. In-memory token still valid — nothing to do
-        if case .authenticated(_, _, let exp) = state, exp > Date().addingTimeInterval(60) { return }
+        if case .authenticated(_, _, let exp, _) = state, exp > Date().addingTimeInterval(60) { return }
 
         // 2. Try our own app keychain (no ACL prompt — we created this item)
         if let stored = loadFromAppKeychain(),
-           case .authenticated(_, _, let exp) = stored,
+           case .authenticated(_, _, let exp, _) = stored,
            exp > Date().addingTimeInterval(60) {
             state = stored
             return
@@ -119,13 +138,13 @@ public final class AuthManager: NSObject, ObservableObject {
 
         // 3. Try refresh token (silent network call, no keychain prompt)
         let rt: String? = {
-            if case .authenticated(_, let r, _) = state, !r.isEmpty { return r }
-            if let stored = loadFromAppKeychain(), case .authenticated(_, let r, _) = stored, !r.isEmpty { return r }
+            if case .authenticated(_, let r, _, _) = state, !r.isEmpty { return r }
+            if let stored = loadFromAppKeychain(), case .authenticated(_, let r, _, _) = stored, !r.isEmpty { return r }
             return nil
         }()
         if let rt {
             await refreshAccessToken(using: rt)
-            if case .authenticated(_, _, let exp) = state, exp > Date().addingTimeInterval(60) { return }
+            if case .authenticated(_, _, let exp, _) = state, exp > Date().addingTimeInterval(60) { return }
         }
 
         // 4. Last resort: Claude Code keychain (may show one-time password prompt)
@@ -163,7 +182,8 @@ public final class AuthManager: NSObject, ObservableObject {
         let expiresAt = Date(timeIntervalSince1970: oauth.expiresAt / 1000)
         return .authenticated(accessToken: oauth.accessToken,
                               refreshToken: oauth.refreshToken,
-                              expiresAt: expiresAt)
+                              expiresAt: expiresAt,
+                              source: .claudeCodeKeychain)
     }
 
     private func loadFromAppKeychain() -> AuthState? {
@@ -171,7 +191,8 @@ public final class AuthManager: NSObject, ObservableObject {
               let stored = try? JSONDecoder().decode(StoredToken.self, from: data) else { return nil }
         return .authenticated(accessToken: stored.accessToken,
                               refreshToken: stored.refreshToken,
-                              expiresAt: stored.expiresAt)
+                              expiresAt: stored.expiresAt,
+                              source: .appOAuth)
     }
 
     // MARK: - Browser OAuth (PKCE)
@@ -215,21 +236,21 @@ public final class AuthManager: NSObject, ObservableObject {
             clearPendingOAuthState()
             return .failure("Invalid OAuth callback URL")
         }
-        let queryItems = components.queryItems ?? []
-        let query = Dictionary(queryItems.map { ($0.name, $0.value ?? "") }, uniquingKeysWith: { first, _ in first })
+        let query = parameterDictionary(from: components.percentEncodedQuery)
+        let fragment = parameterDictionary(from: components.percentEncodedFragment)
 
-        if let providerError = nonEmpty(query["error"]) {
+        if let providerError = nonEmpty(query["error"]) ?? nonEmpty(fragment["error"]) {
             clearPendingOAuthState()
-            let description = nonEmpty(query["error_description"])
+            let description = nonEmpty(query["error_description"]) ?? nonEmpty(fragment["error_description"])
             return .failure(humanMessageForOAuthError(error: providerError, description: description))
         }
 
-        guard let code = nonEmpty(query["code"]) else {
+        guard let code = nonEmpty(query["code"]) ?? nonEmpty(fragment["code"]) else {
             clearPendingOAuthState()
             return .failure("OAuth callback missing authorization code")
         }
 
-        guard let returnedState = nonEmpty(query["state"]) else {
+        guard let returnedState = nonEmpty(query["state"]) ?? nonEmpty(fragment["state"]) else {
             clearPendingOAuthState()
             return .failure("OAuth callback missing state")
         }
@@ -353,6 +374,15 @@ public final class AuthManager: NSObject, ObservableObject {
         return trimmed
     }
 
+    private func parameterDictionary(from percentEncodedQuery: String?) -> [String: String] {
+        guard let percentEncodedQuery, !percentEncodedQuery.isEmpty else { return [:] }
+
+        var parser = URLComponents(string: "https://localhost")!
+        parser.percentEncodedQuery = percentEncodedQuery
+        let items = parser.queryItems ?? []
+        return Dictionary(items.map { ($0.name, $0.value ?? "") }, uniquingKeysWith: { first, _ in first })
+    }
+
     // MARK: - Keychain
 
     public func saveToken(accessToken: String, refreshToken: String, expiresAt: Date) {
@@ -375,7 +405,8 @@ public final class AuthManager: NSObject, ObservableObject {
         }
         state = .authenticated(accessToken: accessToken,
                                refreshToken: refreshToken,
-                               expiresAt: expiresAt)
+                               expiresAt: expiresAt,
+                               source: .appOAuth)
     }
 
     public func signOut() {

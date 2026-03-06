@@ -40,7 +40,16 @@ struct UsageDropdownView: View {
             }
 
             // MARK: Error
-            if let errorMessage = viewModel.error {
+            if viewModel.rateLimitedUntil != nil {
+                TimelineView(.periodic(from: .now, by: 1)) { context in
+                    if let message = viewModel.statusMessage(at: context.date), viewModel.isRateLimited(at: context.date) {
+                        Label(message, systemImage: "clock.badge.exclamationmark")
+                            .foregroundColor(.orange)
+                            .font(.caption)
+                            .lineLimit(2)
+                    }
+                }
+            } else if let errorMessage = viewModel.statusMessage(at: Date()) {
                 Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
                     .foregroundColor(.red)
                     .font(.caption)

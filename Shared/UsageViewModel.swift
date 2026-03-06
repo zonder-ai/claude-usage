@@ -15,6 +15,7 @@ public final class UsageViewModel: ObservableObject {
     @Published public var activity: [ClaudeActivityEntry] = []
     @Published public var activityError: String?
     @Published public var agentToasts: [AgentToastItem] = []
+    @Published public private(set) var rateLimitedUntil: Date?
 
     private let apiClient: ClaudeAPIClient
     public let authManager: AuthManager
@@ -23,12 +24,15 @@ public final class UsageViewModel: ObservableObject {
     private let activityStore: ClaudeActivityStore
     private let toastStore: AgentToastStore
     private let pollInterval: TimeInterval
+    private let now: () -> Date
+    private let jitter: (TimeInterval) -> TimeInterval
     private var timer: Timer?
     private var queueMonitorTimer: Timer?
     private let maxVisibleToasts = 3
     private let queuePollInterval: TimeInterval = 1
     private(set) public var isAgentToastsEnabled = true
     public var onAgentToastsChanged: (([AgentToastItem]) -> Void)?
+    private var consecutiveRateLimitFailures = 0
 
     // Track which thresholds have already fired per reset cycle
     private var firedThresholds5h: Set<Int> = []
@@ -46,7 +50,11 @@ public final class UsageViewModel: ObservableObject {
         historyStore: UsageHistoryStore? = nil,
         activityStore: ClaudeActivityStore? = nil,
         toastStore: AgentToastStore? = nil,
-        pollInterval: TimeInterval = 30
+        pollInterval: TimeInterval = 60,
+        now: @escaping () -> Date = Date.init,
+        jitter: @escaping (TimeInterval) -> TimeInterval = { base in
+            base * Double.random(in: -0.15...0.15)
+        }
     ) {
         self.apiClient = apiClient
         self.authManager = authManager ?? AuthManager()
@@ -55,6 +63,8 @@ public final class UsageViewModel: ObservableObject {
         self.activityStore = activityStore ?? ClaudeActivityStore()
         self.toastStore = toastStore ?? AgentToastStore()
         self.pollInterval = pollInterval
+        self.now = now
+        self.jitter = jitter
 
         // Load cached data to show something immediately on launch
         self.usage = self.store.load()
@@ -86,6 +96,22 @@ public final class UsageViewModel: ObservableObject {
         return UsageLevel.from(utilization: usage.fiveHour.utilization)
     }
 
+    public var authSourceDescription: String? {
+        authManager.state.sourceDescription
+    }
+
+    public func isRateLimited(at date: Date) -> Bool {
+        guard let rateLimitedUntil else { return false }
+        return rateLimitedUntil > date
+    }
+
+    public func statusMessage(at date: Date) -> String? {
+        if let cooldown = rateLimitMessage(at: date) {
+            return cooldown
+        }
+        return error
+    }
+
     // MARK: - Polling
 
     public func startPolling() {
@@ -105,28 +131,43 @@ public final class UsageViewModel: ObservableObject {
 
     public func fetchUsage() {
         Task { @MainActor [weak self] in
-            guard let self else { return }
-            self.refreshActivity()
-            await self.authManager.ensureValidToken()
-            guard case .authenticated(let token, _, _) = self.authManager.state else {
-                self.error = "Not authenticated — sign in via Settings"
-                return
-            }
-            self.isLoading = true
-            do {
-                let response = try await self.apiClient.fetchUsage(accessToken: token)
-                self.usage = response
-                self.error = nil
-                self.store.save(response)
-                self.recordSnapshot(for: response)
-                self.checkNotificationThresholds(response)
-            } catch let apiErr as APIError where apiErr.isAuthError {
-                self.authManager.signOut()
-                self.error = "Session expired — please sign in again"
-            } catch {
-                self.error = error.localizedDescription
-            }
-            self.isLoading = false
+            await self?.fetchUsageNow()
+        }
+    }
+
+    func fetchUsageNow() async {
+        refreshActivity()
+
+        let currentTime = now()
+        if shouldSkipFetch(at: currentTime) {
+            return
+        }
+
+        await authManager.ensureValidToken()
+        guard case .authenticated(let token, _, _, _) = authManager.state else {
+            error = "Not authenticated — sign in via Settings"
+            return
+        }
+
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            let response = try await apiClient.fetchUsage(accessToken: token)
+            clearRateLimitState()
+            usage = response
+            error = nil
+            store.save(response)
+            recordSnapshot(for: response)
+            checkNotificationThresholds(response)
+        } catch let apiErr as APIError where apiErr.isAuthError {
+            clearRateLimitState()
+            authManager.signOut()
+            error = "Session expired — please sign in again"
+        } catch APIError.rateLimited(let retryAfter) {
+            applyRateLimit(retryAfter: retryAfter, at: now())
+        } catch let fetchError {
+            error = fetchError.localizedDescription
         }
     }
 
@@ -194,13 +235,59 @@ public final class UsageViewModel: ObservableObject {
 
     func recordSnapshot(for response: UsageResponse) {
         let snapshot = UsageSnapshot(
-            timestamp: Date(),
+            timestamp: now(),
             fiveHourUtilization: response.fiveHour.utilization,
             sevenDayUtilization: response.sevenDay.utilization
         )
         historyStore.append(snapshot)
         history = historyStore.load()
-        lastUpdated = Date()
+        lastUpdated = now()
+    }
+
+    private func shouldSkipFetch(at date: Date) -> Bool {
+        guard let rateLimitedUntil else { return false }
+        if rateLimitedUntil > date {
+            return true
+        }
+        // Cooldown window elapsed, but keep the 429 streak until a successful fetch.
+        self.rateLimitedUntil = nil
+        return false
+    }
+
+    private func applyRateLimit(retryAfter: TimeInterval?, at date: Date) {
+        let delay: TimeInterval
+        if let retryAfter, retryAfter > 0 {
+            delay = retryAfter
+        } else {
+            let baseDelay = min(60 * pow(2, Double(consecutiveRateLimitFailures)), 900)
+            delay = min(900, max(1, baseDelay + jitter(baseDelay)))
+        }
+
+        rateLimitedUntil = date.addingTimeInterval(delay)
+        consecutiveRateLimitFailures += 1
+        error = nil
+    }
+
+    private func clearRateLimitState() {
+        rateLimitedUntil = nil
+        consecutiveRateLimitFailures = 0
+    }
+
+    private func rateLimitMessage(at date: Date) -> String? {
+        guard let rateLimitedUntil, rateLimitedUntil > date else { return nil }
+        return "Anthropic rate limit reached. Retrying in \(formattedRemainingTime(until: rateLimitedUntil, now: date))."
+    }
+
+    private func formattedRemainingTime(until: Date, now: Date) -> String {
+        let totalSeconds = max(0, Int(until.timeIntervalSince(now).rounded(.up)))
+        let hours = totalSeconds / 3600
+        let minutes = (totalSeconds % 3600) / 60
+        let seconds = totalSeconds % 60
+
+        if hours > 0 {
+            return "\(hours)h \(minutes)m"
+        }
+        return "\(minutes)m \(seconds)s"
     }
 
     // MARK: - Notifications

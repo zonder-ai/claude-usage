@@ -116,6 +116,85 @@ extension ClaudeAPIClientTests {
         }
     }
 
+    func testFetchUsageRateLimitedWithNumericRetryAfter() async {
+        MockURLProtocol.requestHandler = { _ in
+            let response = HTTPURLResponse(
+                url: URL(string: "https://api.anthropic.com/api/oauth/usage")!,
+                statusCode: 429,
+                httpVersion: nil,
+                headerFields: ["Retry-After": "120"]
+            )!
+            return (response, Data())
+        }
+
+        let client = makeMockClient()
+        do {
+            _ = try await client.fetchUsage(accessToken: "token")
+            XCTFail("Expected APIError.rateLimited")
+        } catch APIError.rateLimited(let retryAfter) {
+            guard let retryAfter else {
+                return XCTFail("Expected retryAfter to be parsed")
+            }
+            XCTAssertEqual(retryAfter, 120, accuracy: 0.1)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    func testFetchUsageRateLimitedWithHTTPDateRetryAfter() async {
+        let retryDate = Date().addingTimeInterval(180)
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.dateFormat = "EEE, dd MMM yyyy HH:mm:ss 'GMT'"
+
+        MockURLProtocol.requestHandler = { _ in
+            let response = HTTPURLResponse(
+                url: URL(string: "https://api.anthropic.com/api/oauth/usage")!,
+                statusCode: 429,
+                httpVersion: nil,
+                headerFields: ["Retry-After": formatter.string(from: retryDate)]
+            )!
+            return (response, Data())
+        }
+
+        let client = makeMockClient()
+        do {
+            _ = try await client.fetchUsage(accessToken: "token")
+            XCTFail("Expected APIError.rateLimited")
+        } catch APIError.rateLimited(let retryAfter) {
+            guard let parsed = retryAfter else {
+                return XCTFail("Expected retryAfter to be parsed")
+            }
+            XCTAssertGreaterThan(parsed, 170)
+            XCTAssertLessThan(parsed, 181)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
+    func testFetchUsageRateLimitedWithoutRetryAfter() async {
+        MockURLProtocol.requestHandler = { _ in
+            let response = HTTPURLResponse(
+                url: URL(string: "https://api.anthropic.com/api/oauth/usage")!,
+                statusCode: 429,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            return (response, Data())
+        }
+
+        let client = makeMockClient()
+        do {
+            _ = try await client.fetchUsage(accessToken: "token")
+            XCTFail("Expected APIError.rateLimited")
+        } catch APIError.rateLimited(let retryAfter) {
+            XCTAssertNil(retryAfter)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+
     func testFetchUsageNetworkError() async {
         MockURLProtocol.requestHandler = { _ in
             throw URLError(.notConnectedToInternet)

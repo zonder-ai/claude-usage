@@ -3,6 +3,9 @@ import XCTest
 
 @MainActor
 final class UsageViewModelTests: XCTestCase {
+    private struct MutableNow {
+        var value: Date
+    }
 
     // MARK: - Helpers
 
@@ -16,6 +19,50 @@ final class UsageViewModelTests: XCTestCase {
             authManager: AuthManager(),
             store: UsageStore(defaults: defaults),
             historyStore: UsageHistoryStore(defaults: defaults)
+        )
+    }
+
+    private func makeAuthenticatedViewModel(
+        handler: @escaping (URLRequest) throws -> (HTTPURLResponse, Data),
+        now: MutableNow
+    ) -> (UsageViewModel, () -> Int, (Date) -> Void) {
+        let suiteName = "test.vm.net.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        addTeardownBlock { defaults.removeSuite(named: suiteName) }
+
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [MockURLProtocol.self]
+
+        var requestCount = 0
+        MockURLProtocol.requestHandler = { request in
+            requestCount += 1
+            return try handler(request)
+        }
+
+        let client = ClaudeAPIClient(session: URLSession(configuration: config))
+        let authManager = AuthManager()
+        authManager.state = .authenticated(
+            accessToken: "token",
+            refreshToken: "refresh",
+            expiresAt: Date.distantFuture,
+            source: .appOAuth
+        )
+
+        var mutableNow = now
+        let viewModel = UsageViewModel(
+            apiClient: client,
+            authManager: authManager,
+            store: UsageStore(defaults: defaults),
+            historyStore: UsageHistoryStore(defaults: defaults),
+            pollInterval: 60,
+            now: { mutableNow.value },
+            jitter: { _ in 0 }
+        )
+
+        return (
+            viewModel,
+            { requestCount },
+            { mutableNow.value = $0 }
         )
     }
 
@@ -143,5 +190,118 @@ final class UsageViewModelTests: XCTestCase {
         vm.refreshQueueActivity()
 
         XCTAssertTrue(vm.agentToasts.isEmpty)
+    }
+
+    func testFetchUsageUsesServerRetryAfterAndSkipsRequestsDuringCooldown() async {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let (vm, requestCount, setNow) = makeAuthenticatedViewModel(
+            handler: { _ in
+                let response = HTTPURLResponse(
+                    url: URL(string: "https://api.anthropic.com/api/oauth/usage")!,
+                    statusCode: 429,
+                    httpVersion: nil,
+                    headerFields: ["Retry-After": "300"]
+                )!
+                return (response, Data())
+            },
+            now: MutableNow(value: now)
+        )
+
+        await vm.fetchUsageNow()
+        XCTAssertEqual(requestCount(), 1)
+        XCTAssertEqual(vm.rateLimitedUntil, now.addingTimeInterval(300))
+        XCTAssertEqual(vm.statusMessage(at: now), "Anthropic rate limit reached. Retrying in 5m 0s.")
+
+        setNow(now.addingTimeInterval(30))
+        await vm.fetchUsageNow()
+
+        XCTAssertEqual(requestCount(), 1)
+        XCTAssertEqual(vm.rateLimitedUntil, now.addingTimeInterval(300))
+    }
+
+    func testFetchUsageBackoffDoublesAndCapsAcrossConsecutiveRateLimits() async {
+        let start = Date(timeIntervalSince1970: 1_700_000_000)
+        let (vm, _, setNow) = makeAuthenticatedViewModel(
+            handler: { _ in
+                let response = HTTPURLResponse(
+                    url: URL(string: "https://api.anthropic.com/api/oauth/usage")!,
+                    statusCode: 429,
+                    httpVersion: nil,
+                    headerFields: nil
+                )!
+                return (response, Data())
+            },
+            now: MutableNow(value: start)
+        )
+
+        let expectedBackoffs: [TimeInterval] = [60, 120, 240, 480, 900]
+        var now = start
+
+        for expected in expectedBackoffs {
+            await vm.fetchUsageNow()
+            XCTAssertEqual(vm.rateLimitedUntil, now.addingTimeInterval(expected))
+            now = now.addingTimeInterval(expected + 1)
+            setNow(now)
+        }
+    }
+
+    func testSuccessfulFetchClearsCooldownAndPreservesLastKnownUsageDuringRateLimit() async {
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let successJSON = """
+        {
+            "five_hour": { "utilization": 42.0, "resets_at": "2026-02-18T20:00:00+00:00" },
+            "seven_day": { "utilization": 21.0, "resets_at": "2026-02-24T00:00:00+00:00" }
+        }
+        """.data(using: .utf8)!
+
+        var callIndex = 0
+        let (vm, _, setNow) = makeAuthenticatedViewModel(
+            handler: { _ in
+                defer { callIndex += 1 }
+                if callIndex == 0 {
+                    let response = HTTPURLResponse(
+                        url: URL(string: "https://api.anthropic.com/api/oauth/usage")!,
+                        statusCode: 200,
+                        httpVersion: nil,
+                        headerFields: nil
+                    )!
+                    return (response, successJSON)
+                }
+
+                let response = HTTPURLResponse(
+                    url: URL(string: "https://api.anthropic.com/api/oauth/usage")!,
+                    statusCode: 429,
+                    httpVersion: nil,
+                    headerFields: ["Retry-After": "120"]
+                )!
+                return (response, Data())
+            },
+            now: MutableNow(value: now)
+        )
+
+        await vm.fetchUsageNow()
+        XCTAssertEqual(vm.usage?.fiveHour.utilization, 42.0)
+        XCTAssertNil(vm.rateLimitedUntil)
+
+        setNow(now.addingTimeInterval(10))
+        await vm.fetchUsageNow()
+        XCTAssertEqual(vm.usage?.fiveHour.utilization, 42.0)
+        XCTAssertEqual(vm.statusMessage(at: now.addingTimeInterval(10)), "Anthropic rate limit reached. Retrying in 2m 0s.")
+
+        setNow(now.addingTimeInterval(131))
+        MockURLProtocol.requestHandler = { _ in
+            let response = HTTPURLResponse(
+                url: URL(string: "https://api.anthropic.com/api/oauth/usage")!,
+                statusCode: 200,
+                httpVersion: nil,
+                headerFields: nil
+            )!
+            return (response, successJSON)
+        }
+        await vm.fetchUsageNow()
+
+        XCTAssertNil(vm.rateLimitedUntil)
+        XCTAssertNil(vm.statusMessage(at: now.addingTimeInterval(131)))
+        XCTAssertEqual(vm.usage?.fiveHour.utilization, 42.0)
     }
 }

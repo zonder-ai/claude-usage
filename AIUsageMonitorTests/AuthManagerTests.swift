@@ -25,7 +25,12 @@ final class AuthManagerTests: XCTestCase {
         var state = AuthState.notAuthenticated
         XCTAssertFalse(state.isAuthenticated)
 
-        state = .authenticated(accessToken: "tok", refreshToken: "ref", expiresAt: Date.distantFuture)
+        state = .authenticated(
+            accessToken: "tok",
+            refreshToken: "ref",
+            expiresAt: Date.distantFuture,
+            source: .appOAuth
+        )
         XCTAssertTrue(state.isAuthenticated)
         XCTAssertEqual(state.accessToken, "tok")
     }
@@ -34,14 +39,16 @@ final class AuthManagerTests: XCTestCase {
         let expired = AuthState.authenticated(
             accessToken: "tok",
             refreshToken: "ref",
-            expiresAt: Date.distantPast
+            expiresAt: Date.distantPast,
+            source: .appOAuth
         )
         XCTAssertTrue(expired.isExpired)
 
         let valid = AuthState.authenticated(
             accessToken: "tok",
             refreshToken: "ref",
-            expiresAt: Date.distantFuture
+            expiresAt: Date.distantFuture,
+            source: .appOAuth
         )
         XCTAssertFalse(valid.isExpired)
     }
@@ -79,6 +86,83 @@ final class AuthManagerTests: XCTestCase {
         }
         XCTAssertEqual(code, "auth-code")
         XCTAssertFalse(verifier.isEmpty)
+    }
+
+    @MainActor
+    func testOAuthCallbackReadsAuthorizationCodeFromFragment() {
+        let defaults = makeDefaults()
+        var openedURL: URL?
+        let manager1 = AuthManager(openURL: { openedURL = $0 }, userDefaults: defaults)
+        manager1.startOAuthFlow()
+
+        let authURL = try! XCTUnwrap(openedURL)
+        let state = try! XCTUnwrap(URLComponents(url: authURL, resolvingAgainstBaseURL: false)?
+            .queryItems?
+            .first(where: { $0.name == "state" })?
+            .value)
+
+        let manager2 = AuthManager(openURL: { _ in }, userDefaults: defaults)
+        let callback = URL(string: "aiusagemonitor://oauth/callback#code=fragment-code&state=\(state)")!
+
+        let result = manager2.processOAuthCallback(url: callback)
+
+        guard case .exchange(let code, let verifier) = result else {
+            return XCTFail("Expected exchange decision, got \(result)")
+        }
+        XCTAssertEqual(code, "fragment-code")
+        XCTAssertFalse(verifier.isEmpty)
+    }
+
+    @MainActor
+    func testOAuthCallbackSurfacesProviderErrorDescriptionFromFragment() {
+        let manager = AuthManager(openURL: { _ in }, userDefaults: makeDefaults())
+        let callback = URL(string: "aiusagemonitor://oauth/callback#error=access_denied&error_description=User%20denied%20access")!
+
+        let result = manager.processOAuthCallback(url: callback)
+
+        XCTAssertEqual(result, .failure("Sign-in was canceled: User denied access"))
+    }
+
+    @MainActor
+    func testOAuthCallbackPrefersQueryParametersOverFragment() {
+        let defaults = makeDefaults()
+        var openedURL: URL?
+        let manager1 = AuthManager(openURL: { openedURL = $0 }, userDefaults: defaults)
+        manager1.startOAuthFlow()
+
+        let authURL = try! XCTUnwrap(openedURL)
+        let state = try! XCTUnwrap(URLComponents(url: authURL, resolvingAgainstBaseURL: false)?
+            .queryItems?
+            .first(where: { $0.name == "state" })?
+            .value)
+
+        let manager2 = AuthManager(openURL: { _ in }, userDefaults: defaults)
+        let callback = URL(string: "aiusagemonitor://oauth/callback?code=query-code&state=\(state)#code=fragment-code&state=wrong-state")!
+
+        let result = manager2.processOAuthCallback(url: callback)
+
+        guard case .exchange(let code, _) = result else {
+            return XCTFail("Expected exchange decision, got \(result)")
+        }
+        XCTAssertEqual(code, "query-code")
+    }
+
+    func testAuthenticatedStateCarriesAuthSourceDescription() {
+        let appOAuth = AuthState.authenticated(
+            accessToken: "app-token",
+            refreshToken: "refresh",
+            expiresAt: Date.distantFuture,
+            source: .appOAuth
+        )
+        let claudeCode = AuthState.authenticated(
+            accessToken: "claude-code-token",
+            refreshToken: "refresh",
+            expiresAt: Date.distantFuture,
+            source: .claudeCodeKeychain
+        )
+
+        XCTAssertEqual(appOAuth.sourceDescription, "app OAuth")
+        XCTAssertEqual(claudeCode.sourceDescription, "Claude Code")
     }
 
     private func makeDefaults() -> UserDefaults {

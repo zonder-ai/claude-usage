@@ -70,9 +70,9 @@ struct SettingsView: View {
                 .controlSize(.small)
             }
 
-        case .authenticated(_, _, _):
+        case .authenticated(_, _, _, _):
             HStack {
-                Label("Signed in", systemImage: "checkmark.seal.fill")
+                Label("Signed in via \(viewModel.authSourceDescription ?? "Claude Code")", systemImage: "checkmark.seal.fill")
                     .foregroundColor(.green)
                 Spacer()
                 Button("Sign Out", role: .destructive) {
