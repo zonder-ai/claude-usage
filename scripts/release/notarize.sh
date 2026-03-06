@@ -146,7 +146,9 @@ xcrun stapler validate "$APP_PATH"
 rm -f "$ZIP_PATH"
 ditto -c -k --keepParent "$APP_PATH" "$ZIP_PATH"
 
-# Final local gatekeeper check.
-spctl --assess --type execute --verbose=4 "$APP_PATH" >/dev/null
+# Gatekeeper assessment is intentionally handled by verify-artifact.sh.
+# For notarized app bundles under temp/DerivedData paths, spctl may emit
+# non-actionable "does not seem to be an app" / internal assessment errors.
+# Stapler validation is the deterministic gate for this script.
 
 echo "notarize: OK"
