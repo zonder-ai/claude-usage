@@ -137,9 +137,11 @@ public final class AuthManager: NSObject, ObservableObject {
         }
 
         // 3. Try refresh token (silent network call, no keychain prompt)
+        //    Sources checked in order: in-memory, app keychain, Claude Code keychain.
         let rt: String? = {
             if case .authenticated(_, let r, _, _) = state, !r.isEmpty { return r }
             if let stored = loadFromAppKeychain(), case .authenticated(_, let r, _, _) = stored, !r.isEmpty { return r }
+            if let ccState = loadFromClaudeCode(), case .authenticated(_, let r, _, _) = ccState, !r.isEmpty { return r }
             return nil
         }()
         if let rt {
@@ -149,7 +151,13 @@ public final class AuthManager: NSObject, ObservableObject {
 
         // 4. Last resort: Claude Code keychain (may show one-time password prompt)
         //    After the user clicks "Always Allow" this becomes silent forever.
-        if let fresh = loadFromClaudeCode() { state = fresh }
+        //    Only set state if the token is still valid — otherwise we'd loop
+        //    (set expired → API 401 → signOut → reload expired → …).
+        if let fresh = loadFromClaudeCode(),
+           case .authenticated(_, _, let exp, _) = fresh,
+           exp > Date() {
+            state = fresh
+        }
     }
 
     private func refreshAccessToken(using refreshToken: String) async {
