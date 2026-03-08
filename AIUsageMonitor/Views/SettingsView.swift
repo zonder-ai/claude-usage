@@ -59,15 +59,12 @@ struct SettingsView: View {
     private var authSection: some View {
         switch viewModel.authManager.state {
         case .notAuthenticated:
-            HStack {
+            VStack(alignment: .leading, spacing: 4) {
                 Label("Not signed in", systemImage: "person.slash")
                     .foregroundColor(.secondary)
-                Spacer()
-                Button("Sign In…") {
-                    viewModel.authManager.startOAuthFlow()
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
+                Text("Sign in to Claude Code to authenticate.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
 
         case .authenticated(_, _, _, _):
@@ -82,16 +79,14 @@ struct SettingsView: View {
             }
 
         case .error(let message):
-            HStack {
+            VStack(alignment: .leading, spacing: 4) {
                 Label(message, systemImage: "exclamationmark.triangle.fill")
                     .foregroundColor(.red)
                     .font(.caption)
                     .lineLimit(2)
-                Spacer()
-                Button("Retry") {
-                    viewModel.authManager.startOAuthFlow()
-                }
-                .controlSize(.small)
+                Text("Re-authenticate by signing in to Claude Code.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
         }
     }
