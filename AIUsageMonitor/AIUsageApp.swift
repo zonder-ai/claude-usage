@@ -24,6 +24,13 @@ struct AIUsageApp: App {
     @AppStorage("agentToastsEnabled") private var agentToastsEnabled = true
     private let toastOverlayController = ToastOverlayController()
 
+    private static let claudeLogo: NSImage = {
+        let img = NSImage(named: "ClaudeLogo") ?? NSImage()
+        img.isTemplate = true
+        img.size = NSSize(width: 16, height: 16)
+        return img
+    }()
+
     var body: some Scene {
         MenuBarExtra {
             UsageDropdownView(viewModel: viewModel)
@@ -32,12 +39,7 @@ struct AIUsageApp: App {
                 }
         } label: {
             HStack(spacing: 0) {
-                Image(nsImage: {
-                    let img = NSImage(named: "ClaudeLogo") ?? NSImage()
-                    img.isTemplate = true
-                    img.size = NSSize(width: 16, height: 16)
-                    return img
-                }())
+                Image(nsImage: Self.claudeLogo)
                 Text(viewModel.menuBarText)
                     .monospacedDigit()
                     .padding(.leading, 6)

@@ -55,6 +55,7 @@ final class UsageViewModelTests: XCTestCase {
             store: UsageStore(defaults: defaults),
             historyStore: UsageHistoryStore(defaults: defaults),
             pollInterval: 60,
+            minFetchInterval: 0,
             now: { mutableNow.value },
             jitter: { _ in 0 }
         )

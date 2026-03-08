@@ -24,6 +24,7 @@ public final class UsageViewModel: ObservableObject {
     private let activityStore: ClaudeActivityStore
     private let toastStore: AgentToastStore
     private let pollInterval: TimeInterval
+    private let minFetchInterval: TimeInterval
     private let now: () -> Date
     private let jitter: (TimeInterval) -> TimeInterval
     private var timer: Timer?
@@ -33,6 +34,7 @@ public final class UsageViewModel: ObservableObject {
     private(set) public var isAgentToastsEnabled = true
     public var onAgentToastsChanged: (([AgentToastItem]) -> Void)?
     private var consecutiveRateLimitFailures = 0
+    private var lastFetchedAt: Date?
 
     // Track which thresholds have already fired per reset cycle
     private var firedThresholds5h: Set<Int> = []
@@ -51,6 +53,7 @@ public final class UsageViewModel: ObservableObject {
         activityStore: ClaudeActivityStore? = nil,
         toastStore: AgentToastStore? = nil,
         pollInterval: TimeInterval = 60,
+        minFetchInterval: TimeInterval = 30,
         now: @escaping () -> Date = Date.init,
         jitter: @escaping (TimeInterval) -> TimeInterval = { base in
             base * Double.random(in: -0.15...0.15)
@@ -63,6 +66,7 @@ public final class UsageViewModel: ObservableObject {
         self.activityStore = activityStore ?? ClaudeActivityStore()
         self.toastStore = toastStore ?? AgentToastStore()
         self.pollInterval = pollInterval
+        self.minFetchInterval = minFetchInterval
         self.now = now
         self.jitter = jitter
 
@@ -143,12 +147,19 @@ public final class UsageViewModel: ObservableObject {
             return
         }
 
+        // Throttle: skip if last fetch was too recent to prevent burst
+        // requests from overlapping triggers (wake, timer, manual refresh).
+        if let lastFetchedAt, currentTime.timeIntervalSince(lastFetchedAt) < minFetchInterval {
+            return
+        }
+
         await authManager.ensureValidToken()
         guard case .authenticated(let token, _, _, _) = authManager.state else {
             error = "Not authenticated — sign in via Settings"
             return
         }
 
+        lastFetchedAt = currentTime
         isLoading = true
         defer { isLoading = false }
 
