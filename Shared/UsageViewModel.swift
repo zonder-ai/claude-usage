@@ -155,7 +155,7 @@ public final class UsageViewModel: ObservableObject {
 
         await authManager.ensureValidToken()
         guard case .authenticated(let token, _, _, _) = authManager.state else {
-            error = "Not authenticated — sign in via Settings"
+            error = "Not authenticated — check Settings"
             return
         }
 
@@ -173,8 +173,8 @@ public final class UsageViewModel: ObservableObject {
             checkNotificationThresholds(response)
         } catch let apiErr as APIError where apiErr.isAuthError {
             clearRateLimitState()
-            authManager.signOut()
-            error = "Session expired — please sign in again"
+            authManager.invalidateAccessToken()
+            error = "Session expired — retrying…"
         } catch APIError.rateLimited(let retryAfter) {
             applyRateLimit(retryAfter: retryAfter, at: now())
         } catch let fetchError {

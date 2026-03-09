@@ -47,6 +47,7 @@ struct AIUsageApp: App {
             .task {
                 bindURLOpenHandler()
                 bindToastOverlay()
+                viewModel.authManager.loadToken()
                 viewModel.setAgentToastsEnabled(agentToastsEnabled)
                 viewModel.startPolling()
                 if SMAppService.mainApp.status == .notRegistered {

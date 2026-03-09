@@ -1,6 +1,7 @@
 import AppKit
 import CryptoKit
 import Foundation
+import os
 
 // MARK: - Credential Models
 
@@ -80,7 +81,9 @@ public final class AuthManager: NSObject, ObservableObject {
     }
 
     @Published public var state: AuthState = .notAuthenticated
+    @Published public var lastRefreshError: String?
 
+    private static let logger = Logger(subsystem: "com.aiusagemonitor", category: "auth")
     private static let claudeCodeKeychainService = "Claude Code-credentials"
     private static let appKeychainService = "com.aiusagemonitor.oauth"
     private static let pendingOAuthDefaultsKey = "com.aiusagemonitor.oauth.pending"
@@ -116,8 +119,18 @@ public final class AuthManager: NSObject, ObservableObject {
 
     /// Quick synchronous load — use on startup for an immediate initial state.
     public func loadToken() {
-        if let token = loadFromAppKeychain() { state = token; return }
-        if let token = loadFromClaudeCode() { state = token; return }
+        if let token = loadFromAppKeychain(),
+           case .authenticated(_, _, let exp, _) = token,
+           exp > Date() {
+            state = token
+            return
+        }
+        if let token = loadFromClaudeCode(),
+           case .authenticated(_, _, let exp, _) = token,
+           exp > Date() {
+            state = token
+            return
+        }
         state = .notAuthenticated
     }
 
@@ -161,6 +174,7 @@ public final class AuthManager: NSObject, ObservableObject {
     }
 
     private func refreshAccessToken(using refreshToken: String) async {
+        lastRefreshError = nil
         var request = URLRequest(url: Self.tokenURL)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -171,16 +185,40 @@ public final class AuthManager: NSObject, ObservableObject {
         ]
         request.httpBody = try? JSONEncoder().encode(body)
 
-        guard let (data, response) = try? await URLSession.shared.data(for: request),
-              let http = response as? HTTPURLResponse,
-              (200...299).contains(http.statusCode),
-              let token = try? JSONDecoder().decode(TokenResponse.self, from: data)
-        else { return }  // keep existing state on failure; will retry next poll
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await URLSession.shared.data(for: request)
+        } catch {
+            lastRefreshError = "Network error refreshing token"
+            Self.logger.error("Token refresh network error: \(error.localizedDescription)")
+            return
+        }
 
-        let expiresAt = Date().addingTimeInterval(TimeInterval(token.expiresIn))
-        saveToken(accessToken: token.accessToken,
-                  refreshToken: token.refreshToken ?? refreshToken,
-                  expiresAt: expiresAt)
+        guard let http = response as? HTTPURLResponse else {
+            lastRefreshError = "Invalid response from auth server"
+            Self.logger.error("Token refresh: non-HTTP response")
+            return
+        }
+
+        guard (200...299).contains(http.statusCode) else {
+            let bodyText = String(data: data, encoding: .utf8) ?? "(empty)"
+            lastRefreshError = "Token refresh failed (HTTP \(http.statusCode))"
+            Self.logger.error("Token refresh HTTP \(http.statusCode): \(bodyText)")
+            return
+        }
+
+        do {
+            let token = try JSONDecoder().decode(TokenResponse.self, from: data)
+            let expiresAt = Date().addingTimeInterval(TimeInterval(token.expiresIn))
+            saveToken(accessToken: token.accessToken,
+                      refreshToken: token.refreshToken ?? refreshToken,
+                      expiresAt: expiresAt)
+            Self.logger.info("Token refreshed successfully, expires in \(token.expiresIn)s")
+        } catch {
+            lastRefreshError = "Token response decode error"
+            Self.logger.error("Token refresh decode error: \(error.localizedDescription)")
+        }
     }
 
     private func loadFromClaudeCode() -> AuthState? {
@@ -419,6 +457,14 @@ public final class AuthManager: NSObject, ObservableObject {
 
     public func signOut() {
         deleteKeychainItem(service: Self.appKeychainService)
+        state = .notAuthenticated
+    }
+
+    /// Soft invalidation: clears in-memory state so the next poll re-runs
+    /// `ensureValidToken()`, but preserves the app keychain entry (and its
+    /// refresh token) so the refresh can succeed without falling back to
+    /// the Claude Code keychain.
+    public func invalidateAccessToken() {
         state = .notAuthenticated
     }
 

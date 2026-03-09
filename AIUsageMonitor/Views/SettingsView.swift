@@ -55,16 +55,54 @@ struct SettingsView: View {
 
     // MARK: - Auth Section
 
+    @State private var isRetrying = false
+
     @ViewBuilder
     private var authSection: some View {
         switch viewModel.authManager.state {
         case .notAuthenticated:
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 6) {
                 Label("Not signed in", systemImage: "person.slash")
                     .foregroundColor(.secondary)
-                Text("Sign in to Claude Code to authenticate.")
+
+                if let refreshError = viewModel.authManager.lastRefreshError {
+                    Text(refreshError)
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                }
+
+                Text("Run `claude auth login` in Terminal, then retry.")
                     .font(.caption)
                     .foregroundColor(.secondary)
+
+                HStack(spacing: 8) {
+                    Button {
+                        isRetrying = true
+                        Task {
+                            await viewModel.authManager.ensureValidToken()
+                            if viewModel.authManager.state.isAuthenticated {
+                                viewModel.fetchUsage()
+                            }
+                            isRetrying = false
+                        }
+                    } label: {
+                        if isRetrying {
+                            ProgressView()
+                                .scaleEffect(0.5)
+                                .frame(width: 12, height: 12)
+                        } else {
+                            Text("Retry")
+                        }
+                    }
+                    .controlSize(.small)
+                    .disabled(isRetrying)
+
+                    Button("Open Terminal") {
+                        NSWorkspace.shared.open(
+                            URL(fileURLWithPath: "/System/Applications/Utilities/Terminal.app"))
+                    }
+                    .controlSize(.small)
+                }
             }
 
         case .authenticated(_, _, _, _):
@@ -79,14 +117,36 @@ struct SettingsView: View {
             }
 
         case .error(let message):
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 6) {
                 Label(message, systemImage: "exclamationmark.triangle.fill")
                     .foregroundColor(.red)
                     .font(.caption)
                     .lineLimit(2)
-                Text("Re-authenticate by signing in to Claude Code.")
+
+                Text("Run `claude auth login` in Terminal, then retry.")
                     .font(.caption)
                     .foregroundColor(.secondary)
+
+                Button {
+                    isRetrying = true
+                    Task {
+                        await viewModel.authManager.ensureValidToken()
+                        if viewModel.authManager.state.isAuthenticated {
+                            viewModel.fetchUsage()
+                        }
+                        isRetrying = false
+                    }
+                } label: {
+                    if isRetrying {
+                        ProgressView()
+                            .scaleEffect(0.5)
+                            .frame(width: 12, height: 12)
+                    } else {
+                        Text("Retry")
+                    }
+                }
+                .controlSize(.small)
+                .disabled(isRetrying)
             }
         }
     }
